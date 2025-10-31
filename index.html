@@ -330,6 +330,33 @@ $("openPopup").onclick=openPopup;
 $("cancelPopup").onclick=closePopup;
 $("addBtn").onclick=defaultAdd;
 
+// ==================== POPUP KETERANGAN =====================
+function showKeterangan(ket, material){
+  const ketContent = $("ketContent");
+  let html = "";
+  if(ket) html += `<p><strong></strong> ${ket}</p>`;
+  if(material && material.length){
+    html += `<table>
+      <thead><tr><th>Material</th><th>Satuan</th><th>Qty</th></tr></thead>
+      <tbody>`;
+    material.forEach(m=>{
+      html += `<tr>
+        <td>${m.item||""}</td>
+        <td class="center">${m.satuan||""}</td>
+        <td class="center">${m.qty||""}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  ketContent.innerHTML = html || "<p>-</p>";
+  $("ketOverlay").style.display = "flex";
+}
+
+function closeKetPopup(){
+  $("ketOverlay").style.display = "none";
+}
+
+
 // ==================== PRINT PREVIEW =======================
 $("printPreviewBtn").onclick = () => {
   const { jsPDF } = window.jspdf;
