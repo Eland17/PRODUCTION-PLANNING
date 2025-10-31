@@ -59,16 +59,13 @@ textarea { resize: vertical; }
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<!-- jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 <div class="card">
 <h1>Production Planning</h1>
 <div class="header-actions">
   <button class="btn primary" id="openPopup">+ Add Plan</button>
-  <button class="btn" id="printPdfBtn">Print PDF</button>
+  <button class="btn" id="printPreviewBtn">Print Preview</button>
 </div>
 
 <table id="plansTable">
@@ -168,6 +165,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// ======================= ELEMENTS ===========================
 const $ = id => document.getElementById(id);
 const tbody = document.querySelector("#plansTable tbody");
 let plans = [];
@@ -212,6 +210,7 @@ function render(){
   });
 }
 
+// ======================= STATUS PILLS =======================
 function statusPill(status){
   if(!status) return '<span class="pill">Planned</span>';
   if(status==="Finished") return '<span class="pill green">Finished</span>';
@@ -219,81 +218,245 @@ function statusPill(status){
   return `<span class="pill">${status}</span>`;
 }
 
-// ======================= PRINT PDF (AUTO FIT TEXT) =========================
-document.getElementById("printPdfBtn").onclick = () => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+// ======================= END SEW CALC =======================
+function computeEndSew(startStr, qty, target){
+  if(!startStr||!qty||!target) return "";
+  const totalDays=Math.ceil(qty/target);
+  let date=new Date(startStr+"T00:00:00"); let added=0;
+  while(added<totalDays-1){
+    date.setDate(date.getDate()+1);
+    if(date.getDay()!=0 && date.getDay()!=6) added++;
+  }
+  const yyyy=date.getFullYear(), mm=String(date.getMonth()+1).padStart(2,"0"), dd=String(date.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
-  doc.setFontSize(14);
-  doc.text("Production Planning", 105, 15, { align: "center" });
+// ======================= FORM COLLECT ======================
+function collectForm(){
+  const start=$("start_sew").value, qty=Number($("qty").value), target=Number($("target_day").value);
+  const computedEnd=computeEndSew(start, qty, target);
+  const matRows=document.querySelectorAll("#materialTable tbody tr");
+  const material=Array.from(matRows).map(r=>({
+    item:r.querySelector(".mat-item").value,
+    satuan:r.querySelector(".mat-satuan").value,
+    qty:Number(r.querySelector(".mat-qty").value)
+  }));
+  return {
+    line:$("line").value.trim(),
+    buyer:$("buyer").value.trim(),
+    style:$("style").value.trim(),
+    description:$("description").value.trim(),
+    po:$("po").value.trim(),
+    qty, target_day:target,
+    start_sew:start, end_sew:computedEnd,
+    del_date:$("del_date").value,
+    status:$("status").value,
+    status_ket:$("status_ket").value,
+    keterangan:$("keterangan").value.trim(),
+    material
+  };
+}
 
-  const header = [["Line", "Buyer", "Style", "Description", "PO", "Qty", "Target", "Start", "End", "Delivery"]];
-  const body = plans.map(p => [
-    p.line || "",
-    p.buyer || "",
-    p.style || "",
-    p.description || "",
-    p.po || "",
-    p.qty?.toLocaleString() || "",
-    p.target_day || "",
-    p.start_sew || "",
-    p.end_sew || "",
-    p.del_date || ""
-  ]);
+// ======================= MATERIAL TABLE ====================
+function addMaterialRow(item="", satuan="", qty=""){
+  const tbodyMat=document.querySelector("#materialTable tbody");
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><input class="mat-item" value="${item}" placeholder="Material"></td>
+    <td class="center"><input class="mat-satuan" value="${satuan}" placeholder="Satuan" style="text-align:center;"></td>
+    <td class="center"><input class="mat-qty" type="number" value="${qty}" min="0" style="text-align:center;"></td>
+    <td><span class="remove-btn" onclick="this.closest('tr').remove()">Remove</span></td>`;
+  tbodyMat.appendChild(tr);
+}
+$("addMaterialBtn").onclick=()=>addMaterialRow();
 
-  doc.autoTable({
-    head: header,
-    body: body,
-    startY: 22,
-    theme: 'grid',
-    styles: {
-      fontSize: 8.5,
-      halign: 'center',
-      cellPadding: 1.5,
-      overflow: 'linebreak',
-      lineColor: [200, 200, 200],
-      lineWidth: 0.1,
-    },
-    headStyles: {
-      fillColor: [85, 85, 85],
-      textColor: 255,
-      halign: "center"
-    },
-    columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 20 },
-      3: { cellWidth: 35 },
-      4: { cellWidth: 20 },
-      5: { cellWidth: 14, halign: "right" },
-      6: { cellWidth: 16, halign: "right" },
-      7: { cellWidth: 18 },
-      8: { cellWidth: 18 },
-      9: { cellWidth: 18 },
-    },
-    didParseCell: function (data) {
-      const text = data.cell.text.join("");
-      const maxLen = data.cell.width / 2.2;
-      if (doc.getTextWidth(text) > maxLen) {
-        data.cell.styles.fontSize = 7.2; // otomatis kecil jika panjang
-      }
-    },
-    tableWidth: 'auto',
-    margin: { left: 8, right: 8 },
-  });
-
-  window.open(doc.output('bloburl'), '_blank');
-};
-
-// ======================= CRUD FIRESTORE ====================
+// ======================= FIRESTORE CRUD ====================
 function loadPlans(){
   db.collection("planning_produksi").orderBy("start_sew").get()
   .then(snap=>{
     plans = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
     render();
-  });
+  })
+  .catch(err=>console.error(err));
 }
 
+function savePlan(data, id){
+  if(id){
+    db.collection("planning_produksi").doc(id).set(data)
+    .then(()=>{ loadPlans(); })
+    .catch(err=>console.error(err));
+  } else {
+    db.collection("planning_produksi").add(data)
+    .then(()=>{ loadPlans(); })
+    .catch(err=>console.error(err));
+  }
+}
+
+function deletePlan(id){
+  if(confirm("Hapus data ini?")){
+    db.collection("planning_produksi").doc(id).delete().then(()=>loadPlans());
+  }
+}
+
+function editPlan(id){
+  const p = plans.find(x=>x.id===id);
+  $("line").value = p.line||"";
+  $("buyer").value = p.buyer||"";
+  $("style").value = p.style||"";
+  $("description").value = p.description||"";
+  $("po").value = p.po||"";
+  $("qty").value = p.qty||"";
+  $("target_day").value = p.target_day||"";
+  $("start_sew").value = p.start_sew||"";
+  $("end_sew").value = p.end_sew||"";
+  $("del_date").value = p.del_date||"";
+  $("status").value = p.status||"Planned";
+  $("status_ket").value = p.status_ket||"Complete - Material lengkap";
+  $("keterangan").value = p.keterangan||"";
+  document.querySelector("#materialTable tbody").innerHTML="";
+  (p.material||[]).forEach(m=>addMaterialRow(m.item,m.satuan,m.qty));
+  $("addBtn").textContent="Save";
+  openPopup();
+  $("addBtn").onclick=()=>{
+    const data = collectForm();
+    savePlan(data, id);
+    closePopup();
+    clearForm();
+    $("addBtn").textContent="Add";
+    $("addBtn").onclick=defaultAdd;
+  }
+}
+
+function defaultAdd(){
+  const data = collectForm();
+  savePlan(data);
+  closePopup();
+  clearForm();
+}
+
+function clearForm(){
+  $("planForm").reset();
+  document.querySelector("#materialTable tbody").innerHTML="";
+  $("end_sew").value="";
+}
+
+// ======================= POPUP CONTROL ====================
+function openPopup(){ $("overlay").style.display="flex"; }
+function closePopup(){ $("overlay").style.display="none"; }
+$("openPopup").onclick=openPopup;
+$("cancelPopup").onclick=closePopup;
+$("addBtn").onclick=defaultAdd;
+
+// ======================= PRINT PREVIEW ======================
+$("printPreviewBtn").onclick = () => {
+  let html = `
+  <html>
+  <head>
+    <title>Production Planning</title>
+    <style>
+      @page {
+        size: A4 landscape;
+        margin: 20mm;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: #000;
+        background: #fff;
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        text-align: center;
+        font-size: 18px;
+        font-weight: 600;
+        margin: 20px 0 10px 0;
+      }
+      table {
+        width: 90%;
+        margin: 0 auto;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th, td {
+        border: 1px solid #444;
+        padding: 6px 8px;
+      }
+      th {
+        background: #d9d9d9;
+        text-align: center;
+        font-weight: 600;
+      }
+      td {
+        text-align: center;
+      }
+      td.right {
+        text-align: right;
+      }
+      tr:nth-child(even) {
+        background: #f9f9f9;
+      }
+      @media print {
+        body {
+          margin: 0;
+        }
+        h1 {
+          margin-top: 10mm;
+        }
+        table {
+          width: 90%;
+          margin: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Production Planning</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Line</th>
+          <th>Buyer</th>
+          <th>Style</th>
+          <th>Description</th>
+          <th>PO</th>
+          <th>Qty</th>
+          <th>Target</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Delivery</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  plans.forEach(p => {
+    html += `
+      <tr>
+        <td>${p.line || ""}</td>
+        <td>${p.buyer || ""}</td>
+        <td>${p.style || ""}</td>
+        <td>${p.description || ""}</td>
+        <td>${p.po || ""}</td>
+        <td class="right">${p.qty?.toLocaleString() || ""}</td>
+        <td class="right">${p.target_day || ""}</td>
+        <td>${p.start_sew || ""}</td>
+        <td>${p.end_sew || ""}</td>
+        <td>${p.del_date || ""}</td>
+      </tr>`;
+  });
+
+  html += `
+      </tbody>
+    </table>
+  </body>
+  </html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.print();
+};
+
+// ======================= INIT ===============================
 loadPlans();
 </script>
 </body>
