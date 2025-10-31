@@ -59,6 +59,9 @@ textarea { resize: vertical; }
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 <div class="card">
@@ -169,6 +172,7 @@ const $ = id => document.getElementById(id);
 const tbody = document.querySelector("#plansTable tbody");
 let plans = [];
 
+// ==================== RENDER ===============================
 function render(){
   tbody.innerHTML="";
   const lineOrder = ["2","2A","2B","3","4","5","6","7"];
@@ -216,6 +220,7 @@ function statusPill(status){
   return `<span class="pill">${status}</span>`;
 }
 
+// ==================== HITUNG END SEW =======================
 function computeEndSew(startStr, qty, target){
   if(!startStr||!qty||!target) return "";
   const totalDays=Math.ceil(qty/target);
@@ -228,6 +233,7 @@ function computeEndSew(startStr, qty, target){
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// ==================== FORM & MATERIAL ======================
 function collectForm(){
   const start=$("start_sew").value, qty=Number($("qty").value), target=Number($("target_day").value);
   const computedEnd=computeEndSew(start, qty, target);
@@ -264,6 +270,7 @@ function addMaterialRow(item="", satuan="", qty=""){
 }
 $("addMaterialBtn").onclick=()=>addMaterialRow();
 
+// ==================== FIRESTORE ===========================
 function loadPlans(){
   db.collection("planning_produksi").orderBy("start_sew").get()
   .then(snap=>{
@@ -306,96 +313,74 @@ function editPlan(id){
   $("addBtn").textContent="Save";
   openPopup();
   $("addBtn").onclick=()=>{
-    const data = collectForm();
-    savePlan(data, id);
-    closePopup();
-    clearForm();
-    $("addBtn").textContent="Add";
+    const data=collectForm(); 
+    savePlan(data,id); 
+    closePopup(); 
+    clearForm(); 
+    $("addBtn").textContent="Add"; 
     $("addBtn").onclick=defaultAdd;
   }
 }
 
-function defaultAdd(){
-  const data = collectForm();
-  savePlan(data);
-  closePopup();
-  clearForm();
-}
-
-function clearForm(){
-  $("planForm").reset();
-  document.querySelector("#materialTable tbody").innerHTML="";
-  $("end_sew").value="";
-}
-
+function defaultAdd(){ const data=collectForm(); savePlan(data); closePopup(); clearForm(); }
+function clearForm(){ $("planForm").reset(); document.querySelector("#materialTable tbody").innerHTML=""; $("end_sew").value=""; }
 function openPopup(){ $("overlay").style.display="flex"; }
 function closePopup(){ $("overlay").style.display="none"; }
 $("openPopup").onclick=openPopup;
 $("cancelPopup").onclick=closePopup;
 $("addBtn").onclick=defaultAdd;
 
-// ======================= PRINT PREVIEW ======================
+// ==================== PRINT PREVIEW =======================
 $("printPreviewBtn").onclick = () => {
-  let html = `
-  <html>
-  <head>
-    <title>Production Planning</title>
-    <style>
-      @page { size: A4 landscape; margin: 20mm; }
-      body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; color: #000; background: #fff; margin: 0; padding: 0; }
-      h1 { text-align: center; font-size: 18px; font-weight: 600; margin: 20px 0 10px 0; }
-      table { width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 12px; }
-      th, td { border: 1px solid #444; padding: 6px 8px; text-align: center; }
-      th { background: #d9d9d9; font-weight: 600; }
-      td.right { text-align: right; }
-      tr:nth-child(even) { background: #f9f9f9; }
-    </style>
-  </head>
-  <body>
-    <h1>Production Planning</h1>
-    <table>
-      <thead>
-        <tr>
-          <th>Line</th>
-          <th>Buyer</th>
-          <th>Style</th>
-          <th>Description</th>
-          <th>PO</th>
-          <th>Qty</th>
-          <th>Target</th>
-          <th>Start</th>
-          <th>End</th>
-          <th>Delivery</th>
-        </tr>
-      </thead>
-      <tbody>`;
-  plans.forEach(p => {
-    html += `
-      <tr>
-        <td>${p.line || ""}</td>
-        <td>${p.buyer || ""}</td>
-        <td>${p.style || ""}</td>
-        <td>${p.description || ""}</td>
-        <td>${p.po || ""}</td>
-        <td class="right">${p.qty?.toLocaleString() || ""}</td>
-        <td class="right">${p.target_day || ""}</td>
-        <td>${p.start_sew || ""}</td>
-        <td>${p.end_sew || ""}</td>
-        <td>${p.del_date || ""}</td>
-      </tr>`;
-  });
-  html += `
-      </tbody>
-    </table>
-  </body>
-  </html>`;
-  const win = window.open("", "_blank");
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  win.print();
-};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("portrait", "mm", "a4"); // portrait
+  doc.setFontSize(12);
+  doc.setTextColor(0,0,0);
+  doc.text("Production Planning", 105, 10, { align: "center" });
 
+  const rows = plans.map(p => [
+    p.line || "", 
+    p.buyer || "", 
+    p.style || "", 
+    p.description || "", 
+    p.po || "",
+    p.qty?.toLocaleString() || "", 
+    p.target_day || "", 
+    p.start_sew || "", 
+    p.end_sew || "", 
+    p.del_date || ""
+  ]);
+
+  doc.autoTable({
+    startY: 18,
+    head: [["Line","Buyer","Style","Description","PO","Qty","Target","Start","End","Delivery"]],
+    body: rows,
+    theme: 'grid',
+    styles: { fontSize: 7, textColor: 0, cellPadding: 2 }, // teks hitam untuk semua
+    headStyles: { fillColor: [169,169,169], textColor: 0, halign:'center', fontStyle:'bold' },
+    columnStyles: { 
+      0:{halign:'center', cellWidth: 12}, 
+      1:{halign:'center', cellWidth: 20}, 
+      2:{halign:'center', cellWidth: 20}, 
+      3:{halign:'center', cellWidth: 38}, 
+      4:{halign:'center', cellWidth: 20}, 
+      5:{halign:'right', cellWidth: 15},  
+      6:{halign:'right', cellWidth: 15},  
+      7:{halign:'center', cellWidth: 18}, 
+      8:{halign:'center', cellWidth: 18}, 
+      9:{halign:'center', cellWidth: 25}  
+    },
+    tableLineColor: [0,0,0],
+    margin: { left: 5, right: 5 }
+  });
+
+  const pdfBlob = doc.output('blob');
+  const url = URL.createObjectURL(pdfBlob);
+  window.open(url, '_blank');
+}
+
+
+// ==================== LOAD ===============================
 loadPlans();
 </script>
 </body>
