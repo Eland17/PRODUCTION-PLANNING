@@ -24,8 +24,12 @@ td.right { text-align:right; }
 td.center { text-align:center; }
 tr:nth-child(even){ background:#fafafa; }
 .pill { padding:3px 6px; border-radius:4px; font-size:11px; }
-.pill.green { background:#d4edda; color:#155724; }
-.pill.red { background:#f8d7da; color:#721c24; }
+
+/* STATUS KETERANGAN COLORS */
+.status-complete { color: green; font-weight:bold; cursor:pointer; text-decoration:underline; }
+.status-major { color: red; font-weight:bold; cursor:pointer; text-decoration:underline; }
+.status-minor { color: orange; font-weight:bold; cursor:pointer; text-decoration:underline; }
+
 /* Popup */
 .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:10; }
 .popup { background:#fff; border-radius:6px; padding:20px; width:95%; max-width:650px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
@@ -115,7 +119,7 @@ textarea { resize: vertical; }
         <label>Status Keterangan</label>
         <select id="status_ket">
           <option value=""></option>
-          <option value="Complete">Completed</option>
+          <option value="Completed">Completed</option>
           <option value="Major Issue">Major Issue</option>
           <option value="Minor Issue">Minor Issue</option>
         </select>
@@ -189,6 +193,10 @@ function renderTable(page=1){
   const pageData = filtered.slice(startIdx,endIdx);
   pageData.forEach(p=>{
     const tr=document.createElement("tr");
+    const ketClass =
+      p.status_ket==="Completed" ? "status-complete" :
+      p.status_ket==="Major Issue" ? "status-major" :
+      p.status_ket==="Minor Issue" ? "status-minor" : "";
     tr.innerHTML=`<td class="center">${p.line||""}</td>
       <td class="center">${p.buyer||""}</td>
       <td class="center">${p.style||""}</td>
@@ -201,7 +209,7 @@ function renderTable(page=1){
       <td>${p.del_date||""}</td>
       <td><span class="pill">${p.status}</span></td>
       <td>
-        <span style="cursor:pointer;color:blue;text-decoration:underline;"
+        <span class="${ketClass}"
           onclick='showKeterangan("${(p.keterangan||"").replace(/"/g,"&quot;")}", ${JSON.stringify(p.material||[])})'>
           ${p.status_ket||"-"}
         </span>
@@ -215,24 +223,11 @@ function renderTable(page=1){
   renderPagination(totalPages);
 }
 
-function renderPagination(total){
-  const pag = $("pagination");
-  pag.innerHTML="";
-  for(let i=1;i<=total;i++){
-    const btn = document.createElement("button");
-    btn.textContent=i;
-    if(i===currentPage) btn.classList.add("active");
-    btn.onclick=()=>{ currentPage=i; renderTable(currentPage); }
-    pag.appendChild(btn);
-  }
-}
-
 // ==================== FIRESTORE ===========================
 function loadPlans(){
   db.collection("planning_produksi").orderBy("start_sew").get()
   .then(snap=>{
     plans = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-    // auto update status if start <= today
     const today = new Date().toISOString().slice(0,10);
     plans.forEach(p=>{
       if(p.status==="Planned" && p.start_sew<=today){
@@ -343,6 +338,19 @@ function showKeterangan(text, mat){
   $("ketOverlay").style.display="flex";
 }
 function closeKetPopup(){ $("ketOverlay").style.display="none"; }
+
+// ==================== PAGINATION ========================
+function renderPagination(total){
+  const pag = $("pagination");
+  pag.innerHTML="";
+  for(let i=1;i<=total;i++){
+    const btn = document.createElement("button");
+    btn.textContent=i;
+    if(i===currentPage) btn.classList.add("active");
+    btn.onclick=()=>{ currentPage=i; renderTable(currentPage); }
+    pag.appendChild(btn);
+  }
+}
 
 // ==================== INIT ==============================
 loadPlans();
