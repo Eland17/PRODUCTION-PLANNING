@@ -23,9 +23,10 @@ td { text-align:left; }
 td.right { text-align:right; }
 td.center { text-align:center; }
 tr:nth-child(even){ background:#fafafa; }
-.pill { padding:3px 6px; border-radius:4px; font-size:11px; }
+.pill { padding:3px 6px; border-radius:4px; font-size:11px; display:inline-block; }
 .pill.green { background:#d4edda; color:#155724; }
 .pill.red { background:#f8d7da; color:#721c24; }
+.pill.orange { background:#fff3cd; color:#856404; }
 /* Popup */
 .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:10; }
 .popup { background:#fff; border-radius:6px; padding:20px; width:95%; max-width:650px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
@@ -68,9 +69,7 @@ textarea { resize: vertical; }
 
 <div class="card">
 <h1>Finished Production</h1>
-<div class="header-actions">
-  <!-- tombol Add Plan dihapus -->
-</div>
+<div class="header-actions"></div>
 
 <table id="plansTable">
   <thead>
@@ -149,7 +148,6 @@ textarea { resize: vertical; }
 </div>
 
 <script>
-// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyACOluEhfPw4JBlBaHyXtf1k3TIJAHikKo",
   authDomain: "inventory-gudang-16dfe.firebaseapp.com",
@@ -161,14 +159,12 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-const $ = id => document.getElementById(id);
+const $ = id=>document.getElementById(id);
 const tbody = document.querySelector("#plansTable tbody");
 let plans=[], currentPage=1, rowsPerPage=15;
 
-// SORT LINE
 function sortLine(a,b){ const regex=/^(\d+)([A-Z]?)$/i; const matchA=a.line.match(regex); const matchB=b.line.match(regex); if(!matchA||!matchB) return 0; const numA=parseInt(matchA[1]), numB=parseInt(matchB[1]); const charA=matchA[2]||"", charB=matchB[2]||""; if(numA!==numB) return numA-numB; return charA.localeCompare(charB); }
 
-// RENDER TABLE
 function renderTable(page=1){
   tbody.innerHTML="";
   const filtered=plans.filter(p=>p.status==="Finished").sort(sortLine);
@@ -178,6 +174,10 @@ function renderTable(page=1){
   const pageData=filtered.slice(startIdx,endIdx);
   pageData.forEach(p=>{
     const tr=document.createElement("tr");
+    const ketClass =
+      p.status_ket==="Complete" ? "pill green" :
+      p.status_ket==="Major Issue" ? "pill red" :
+      p.status_ket==="Minor Issue" ? "pill orange" : "";
     tr.innerHTML=`<td class="center">${p.line||""}</td>
       <td class="center">${p.buyer||""}</td>
       <td class="center">${p.style||""}</td>
@@ -190,7 +190,7 @@ function renderTable(page=1){
       <td>${p.del_date||""}</td>
       <td><span class="pill">${p.status}</span></td>
       <td>
-        <span style="cursor:pointer;color:blue;text-decoration:underline;"
+        <span class="${ketClass}" style="cursor:pointer;text-decoration:underline;"
           onclick='showKeterangan("${(p.keterangan||"").replace(/"/g,"&quot;")}", ${JSON.stringify(p.material||[])})'>
           ${p.status_ket||"-"}
         </span>
@@ -203,17 +203,11 @@ function renderTable(page=1){
   });
   renderPagination(totalPages);
 }
+
 function renderPagination(total){ const pag=$("pagination"); pag.innerHTML=""; for(let i=1;i<=total;i++){ const btn=document.createElement("button"); btn.textContent=i; if(i===currentPage) btn.classList.add("active"); btn.onclick=()=>{ currentPage=i; renderTable(currentPage); }; pag.appendChild(btn); }}
 
-// LOAD PLANS
-function loadPlans(){
-  db.collection("planning_produksi").orderBy("start_sew").get().then(snap=>{
-    plans=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-    renderTable(currentPage);
-  });
-}
+function loadPlans(){ db.collection("planning_produksi").orderBy("start_sew").get().then(snap=>{ plans=snap.docs.map(doc=>({id:doc.id,...doc.data()})); renderTable(currentPage); }); }
 
-// SAVE / DELETE / EDIT
 function savePlan(data,id){ if(id){ db.collection("planning_produksi").doc(id).set(data).then(()=>loadPlans()); } }
 function deletePlan(id){ if(confirm("Hapus data ini?")){ db.collection("planning_produksi").doc(id).delete().then(()=>loadPlans()); } }
 function editPlan(id){
@@ -233,7 +227,6 @@ function editPlan(id){
   $("keterangan").value=p.keterangan||"";
   document.querySelector("#materialTable tbody").innerHTML="";
   (p.material||[]).forEach(m=>addMaterialRow(m.item,m.satuan,m.qty));
-
   $("addBtn").textContent="Save";
   openPopup();
   $("addBtn").onclick=()=>{
@@ -244,27 +237,23 @@ function editPlan(id){
   }
 }
 
-// FORM MATERIAL
 function collectForm(){ const start=$("start_sew").value, qty=Number($("qty").value), target=Number($("target_day").value); const computedEnd=computeEndSew(start,qty,target); const matRows=document.querySelectorAll("#materialTable tbody tr"); const material=Array.from(matRows).map(r=>({item:r.querySelector(".mat-item").value,satuan:r.querySelector(".mat-satuan").value,qty:Number(r.querySelector(".mat-qty").value)})); return {line:$("line").value.trim(),buyer:$("buyer").value.trim(),style:$("style").value.trim(),description:$("description").value.trim(),po:$("po").value.trim(),qty,target_day:target,start_sew:start,end_sew:computedEnd,del_date:$("del_date").value,status:$("status").value,status_ket:$("status_ket").value,keterangan:$("keterangan").value.trim(),material}; }
 function addMaterialRow(item="",satuan="",qty=""){ const tbodyMat=document.querySelector("#materialTable tbody"); const tr=document.createElement("tr"); tr.innerHTML=`<td><input class="mat-item" value="${item}" placeholder="Material"></td><td class="center"><input class="mat-satuan" value="${satuan}" placeholder="Satuan" style="text-align:center;"></td><td class="center"><input class="mat-qty" type="number" value="${qty}" min="0" style="text-align:center;"></td>`; tbodyMat.appendChild(tr); }
-function defaultAdd(){ } // tidak dipakai karena Add dihapus
+function defaultAdd(){ }
 function clearForm(){ $("planForm").reset(); document.querySelector("#materialTable tbody").innerHTML=""; $("end_sew").value=""; }
 function openPopup(){ $("overlay").style.display="flex"; }
 function closePopup(){ $("overlay").style.display="none"; }
 $("cancelPopup").onclick=closePopup;
 
-// END SEW
 $("start_sew").addEventListener("change",updateEndSew);
 $("qty").addEventListener("input",updateEndSew);
 $("target_day").addEventListener("input",updateEndSew);
 function updateEndSew(){ const start=$("start_sew").value; const qty=Number($("qty").value); const target=Number($("target_day").value); $("end_sew").value=computeEndSew(start,qty,target); }
 function computeEndSew(start,qty,target){ if(!start||!qty||!target) return ""; const startDate=new Date(start); let remaining=qty; let date=new Date(startDate); while(remaining>0){ const day=date.getDay(); if(day!==0 && day!==6) remaining-=target; date.setDate(date.getDate()+1); } date.setDate(date.getDate()-1); return date.toISOString().slice(0,10); }
 
-// KETERANGAN
 function showKeterangan(text,mat){ let html=`<p>${text||"-"}</p>`; if(mat.length){ html+=`<table><thead><tr><th>Material</th><th>Satuan</th><th>Qty</th></tr></thead><tbody>`; mat.forEach(m=>html+=`<tr><td>${m.item}</td><td class="center">${m.satuan}</td><td class="center">${m.qty}</td></tr>`); html+="</tbody></table>"; } $("ketContent").innerHTML=html; $("ketOverlay").style.display="flex"; }
 function closeKetPopup(){ $("ketOverlay").style.display="none"; }
 
-// INIT
 loadPlans();
 </script>
 </body>
