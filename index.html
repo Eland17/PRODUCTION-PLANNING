@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planned Production</title>
+<style>
+body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:#e9e7dd; margin:0; padding:20px; display:flex; justify-content:center; }
+#wrapper { max-width:1500px; width:100%; }
+nav { margin-bottom:10px; font-size:14px; }
+nav a { margin-right:10px; text-decoration:none; color:#007bff; }
+nav a:hover { text-decoration:underline; }
+.card { background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.08); padding:15px; }
+h1 { font-size:18px; margin:0 0 10px; }
+.header-actions { display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px; }
+.btn { background:#f8f9fa; border:1px solid #ccc; border-radius:4px; font-size:12px; padding:6px 10px; cursor:pointer; transition:0.2s; }
+.btn:hover { background:#f0f0f0; }
+.btn.primary { background:#007bff; color:white; border-color:#007bff; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th, td { border:1px solid #ddd; padding:6px 8px; }
+th { background:#f3f3f3; text-align:center; }
+td { text-align:left; }
+td.right { text-align:right; }
+td.center { text-align:center; }
+tr:nth-child(even){ background:#fafafa; }
+.pill { padding:3px 6px; border-radius:4px; font-size:11px; }
+.pill.green { background:#d4edda; color:#155724; }
+.pill.red { background:#f8d7da; color:#721c24; }
+/* Popup */
+.overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:10; }
+.popup { background:#fff; border-radius:6px; padding:20px; width:95%; max-width:650px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+.popup h2 { margin-top:0; font-size:16px; text-align:center; border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:15px; }
+form { display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; }
+label { display:block; margin-bottom:3px; color:#333; }
+input, select, textarea { width:100%; padding:5px 8px; border:1px solid #ccc; border-radius:4px; font-size:12px; box-sizing:border-box; }
+textarea { resize: vertical; }
+.form-actions { grid-column: span 2; display:flex; justify-content:flex-end; gap:6px; margin-top:5px; }
+#materialTable { width:100%; border-collapse: collapse; margin-top:5px; font-size:12px; }
+#materialTable th, #materialTable td { border:1px solid #ddd; padding:4px 6px; }
+#materialTable th { background:#f3f3f3; text-align:center; }
+#materialTable td { text-align:left; }
+#materialTable td.center { text-align:center; }
+.remove-btn { color:red; cursor:pointer; font-size:12px; }
+.ket-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:20; }
+.ket-popup { background:#fff; border-radius:6px; padding:15px; width:90%; max-width:400px; box-shadow:0 4px 10px rgba(0,0,0,0.3); font-size:12px; }
+.ket-popup h3 { margin-top:0; font-size:14px; text-align:center; border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:10px; }
+.ket-popup table { width:100%; border-collapse: collapse; margin-top:10px; font-size:12px; }
+.ket-popup th, .ket-popup td { border:1px solid #ddd; padding:4px 6px; }
+.ket-popup th { background:#f3f3f3; text-align:center; }
+.ket-popup td { text-align:left; }
+.ket-popup td.center { text-align:center; }
+.pagination { margin-top:8px; text-align:center; }
+.pagination button { margin:0 2px; padding:4px 8px; border:1px solid #ccc; border-radius:4px; cursor:pointer; font-size:12px; }
+.pagination button.active { background:#007bff; color:white; border-color:#007bff; }
+@media (max-width:600px){ form{grid-template-columns:1fr;} }
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div id="wrapper">
+<nav>
+  <a href="index.html">Planned</a> |
+  <a href="inprogress.html">In Progress</a> |
+  <a href="finished.html">Finished</a>
+</nav>
+
+<div class="card">
+<h1>Planned Production</h1>
+<div class="header-actions">
+  <button class="btn primary" id="openPopup">+ Add Plan</button>
+</div>
+
+<table id="plansTable">
+  <thead>
+    <tr>
+      <th>Line</th><th>Buyer</th><th>Style</th><th>Description</th>
+      <th>PO</th><th class="right">Qty</th><th class="right">Target</th>
+      <th>Start Sew</th><th>End Sew</th><th>Delivery</th>
+      <th>Status</th><th>Keterangan</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<div class="pagination" id="pagination"></div>
+</div>
+</div>
+
+<!-- Popup Form -->
+<div class="overlay" id="overlay">
+  <div class="popup">
+    <h2>Tambah Rencana Produksi</h2>
+    <form id="planForm" onsubmit="return false;">
+      <div><label>Line</label><input id="line"></div>
+      <div><label>Buyer</label><input id="buyer" required></div>
+      <div><label>Style</label><input id="style" required></div>
+      <div><label>Description</label><input id="description"></div>
+      <div><label>PO Number</label><input id="po"></div>
+      <div><label>Qty Order</label><input id="qty" type="number"></div>
+      <div><label>Target (pcs/hari)</label><input id="target_day" type="number" min="1"></div>
+      <div><label>Start Sew</label><input id="start_sew" type="date"></div>
+      <div><label>End Sew (otomatis)</label><input id="end_sew" type="date" readonly></div>
+      <div><label>Delivery Date</label><input id="del_date" type="date"></div>
+      <div>
+        <label>Status</label>
+        <select id="status">
+          <option value="Planned">Planned</option>
+          <option value="On Progress">On Progress</option>
+          <option value="Finished">Finished</option>
+          <option value="Delay">Delay</option>
+        </select>
+      </div>
+      <div style="grid-column: span 2;">
+        <label>Status Keterangan</label>
+        <select id="status_ket">
+          <option value=""></option>
+          <option value="Complete">Completed</option>
+          <option value="Major Issue">Major Issue</option>
+          <option value="Minor Issue">Minor Issue</option>
+        </select>
+        <label style="margin-top:5px;">Keterangan Tambahan</label>
+        <textarea id="keterangan" rows="2" placeholder="Tambahkan keterangan tambahan"></textarea>
+      </div>
+      <div style="grid-column: span 2;">
+        <label>Detail Material</label>
+        <button type="button" class="btn" style="margin-bottom:5px;" id="addMaterialBtn">+ Add Material</button>
+        <table id="materialTable">
+          <thead><tr><th>Material</th><th>Satuan</th><th>Qty</th><th>Action</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn" id="cancelPopup">Cancel</button>
+        <button type="submit" class="btn primary" id="addBtn">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Keterangan Popup -->
+<div class="ket-overlay" id="ketOverlay">
+  <div class="ket-popup">
+    <h3>Detail Keterangan</h3>
+    <div id="ketContent"></div>
+    <div style="text-align:center; margin-top:10px;">
+      <button class="btn" onclick="closeKetPopup()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======================= FIREBASE ===========================
+const firebaseConfig = {
+  apiKey: "AIzaSyACOluEhfPw4JBlBaHyXtf1k3TIJAHikKo",
+  authDomain: "inventory-gudang-16dfe.firebaseapp.com",
+  projectId: "inventory-gudang-16dfe",
+  storageBucket: "inventory-gudang-16dfe.appspot.com",
+  messagingSenderId: "663364522026",
+  appId: "1:663364522026:web:6ee9d76e506d6cf43eb289"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const $ = id => document.getElementById(id);
+const tbody = document.querySelector("#plansTable tbody");
+let plans = [];
+let currentPage = 1, rowsPerPage = 15;
+
+// ==================== SORT CUSTOM LINE =====================
+function sortLine(a, b){
+  const regex = /^(\d+)([A-Z]?)$/i;
+  const matchA = a.line.match(regex);
+  const matchB = b.line.match(regex);
+  if(!matchA || !matchB) return 0;
+  const numA = parseInt(matchA[1]), numB = parseInt(matchB[1]);
+  const charA = matchA[2] || "", charB = matchB[2] || "";
+  if(numA !== numB) return numA - numB;
+  return charA.localeCompare(charB);
+}
+
+// ==================== RENDER TABLE =========================
+function renderTable(page=1){
+  tbody.innerHTML="";
+  const filtered = plans.filter(p=>p.status==="Planned").sort(sortLine);
+  const totalPages = Math.ceil(filtered.length/rowsPerPage);
+  const startIdx = (page-1)*rowsPerPage;
+  const endIdx = startIdx+rowsPerPage;
+  const pageData = filtered.slice(startIdx,endIdx);
+  pageData.forEach(p=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td class="center">${p.line||""}</td>
+      <td class="center">${p.buyer||""}</td>
+      <td class="center">${p.style||""}</td>
+      <td class="center">${p.description||""}</td>
+      <td class="center">${p.po||""}</td>
+      <td class="right">${p.qty?.toLocaleString()||""}</td>
+      <td class="right">${p.target_day||""}</td>
+      <td>${p.start_sew||""}</td>
+      <td>${p.end_sew||""}</td>
+      <td>${p.del_date||""}</td>
+      <td><span class="pill">${p.status}</span></td>
+      <td>
+        <span style="cursor:pointer;color:blue;text-decoration:underline;"
+          onclick='showKeterangan("${(p.keterangan||"").replace(/"/g,"&quot;")}", ${JSON.stringify(p.material||[])})'>
+          ${p.status_ket||"-"}
+        </span>
+      </td>
+      <td>
+        <button class="btn" onclick='editPlan("${p.id}")'>Edit</button>
+        <button class="btn" style="color:red;" onclick='deletePlan("${p.id}")'>Del</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  renderPagination(totalPages);
+}
+
+function renderPagination(total){
+  const pag = $("pagination");
+  pag.innerHTML="";
+  for(let i=1;i<=total;i++){
+    const btn = document.createElement("button");
+    btn.textContent=i;
+    if(i===currentPage) btn.classList.add("active");
+    btn.onclick=()=>{ currentPage=i; renderTable(currentPage); }
+    pag.appendChild(btn);
+  }
+}
+
+// ==================== FIRESTORE ===========================
+function loadPlans(){
+  db.collection("planning_produksi").orderBy("start_sew").get()
+  .then(snap=>{
+    plans = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+    // auto update status if start <= today
+    const today = new Date().toISOString().slice(0,10);
+    plans.forEach(p=>{
+      if(p.status==="Planned" && p.start_sew<=today){
+        db.collection("planning_produksi").doc(p.id).update({status:"On Progress"});
+      }
+    });
+    renderTable(currentPage);
+  });
+}
+
+function savePlan(data, id){
+  if(id){
+    db.collection("planning_produksi").doc(id).set(data).then(()=>loadPlans());
+  } else {
+    db.collection("planning_produksi").add(data).then(()=>loadPlans());
+  }
+}
+
+function deletePlan(id){
+  if(confirm("Hapus data ini?")){
+    db.collection("planning_produksi").doc(id).delete().then(()=>loadPlans());
+  }
+}
+
+function editPlan(id){
+  const p = plans.find(x=>x.id===id);
+  $("line").value = p.line||"";
+  $("buyer").value = p.buyer||"";
+  $("style").value = p.style||"";
+  $("description").value = p.description||"";
+  $("po").value = p.po||"";
+  $("qty").value = p.qty||"";
+  $("target_day").value = p.target_day||"";
+  $("start_sew").value = p.start_sew||"";
+  $("end_sew").value = p.end_sew||"";
+  $("del_date").value = p.del_date||"";
+  $("status").value = p.status||"Planned";
+  $("status_ket").value = p.status_ket||"";
+  $("keterangan").value = p.keterangan||"";
+  document.querySelector("#materialTable tbody").innerHTML="";
+  (p.material||[]).forEach(m=>addMaterialRow(m.item,m.satuan,m.qty));
+  $("addBtn").textContent="Save";
+  openPopup();
+  $("addBtn").onclick=()=>{ const data=collectForm(); savePlan(data,id); closePopup(); clearForm(); $("addBtn").textContent="Add"; $("addBtn").onclick=defaultAdd; }
+}
+
+// ==================== FORM & MATERIAL ======================
+function collectForm(){
+  const start=$("start_sew").value, qty=Number($("qty").value), target=Number($("target_day").value);
+  const computedEnd=computeEndSew(start, qty, target);
+  const matRows=document.querySelectorAll("#materialTable tbody tr");
+  const material=Array.from(matRows).map(r=>({item:r.querySelector(".mat-item").value,satuan:r.querySelector(".mat-satuan").value,qty:Number(r.querySelector(".mat-qty").value)}));
+  return {line:$("line").value.trim(),buyer:$("buyer").value.trim(),style:$("style").value.trim(),description:$("description").value.trim(),po:$("po").value.trim(),qty,target_day:target,start_sew:start,end_sew:computedEnd,del_date:$("del_date").value,status:$("status").value,status_ket:$("status_ket").value,keterangan:$("keterangan").value.trim(),material};
+}
+
+function addMaterialRow(item="", satuan="", qty=""){
+  const tbodyMat=document.querySelector("#materialTable tbody");
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><input class="mat-item" value="${item}" placeholder="Material"></td>
+    <td class="center"><input class="mat-satuan" value="${satuan}" placeholder="Satuan" style="text-align:center;"></td>
+    <td class="center"><input class="mat-qty" type="number" value="${qty}" min="0" style="text-align:center;"></td>
+    <td><span class="remove-btn" onclick="this.closest('tr').remove()">Remove</span></td>`;
+  tbodyMat.appendChild(tr);
+}
+$("addMaterialBtn").onclick=()=>addMaterialRow();
+
+function defaultAdd(){ const data=collectForm(); savePlan(data); closePopup(); clearForm(); }
+function clearForm(){ $("planForm").reset(); document.querySelector("#materialTable tbody").innerHTML=""; $("end_sew").value=""; }
+function openPopup(){ $("overlay").style.display="flex"; }
+function closePopup(){ $("overlay").style.display="none"; }
+$("openPopup").onclick=openPopup;
+$("cancelPopup").onclick=closePopup;
+$("addBtn").onclick=defaultAdd;
+
+// ==================== END SEW ======================
+$("start_sew").addEventListener("change", updateEndSew);
+$("qty").addEventListener("input", updateEndSew);
+$("target_day").addEventListener("input", updateEndSew);
+function updateEndSew() {
+  const start = $("start_sew").value;
+  const qty = Number($("qty").value);
+  const target = Number($("target_day").value);
+  $("end_sew").value = computeEndSew(start, qty, target);
+}
+function computeEndSew(start, qty, target){
+  if(!start||!qty||!target) return "";
+  const startDate = new Date(start);
+  let remaining = qty;
+  let date = new Date(startDate);
+  while(remaining>0){
+    const day=date.getDay();
+    if(day!==0 && day!==6) remaining-=target;
+    date.setDate(date.getDate()+1);
+  }
+  date.setDate(date.getDate()-1);
+  return date.toISOString().slice(0,10);
+}
+
+// ==================== KETERANGAN ========================
+function showKeterangan(text, mat){
+  let html=`<p>${text||"-"}</p>`;
+  if(mat.length){
+    html+=`<table><thead><tr><th>Material</th><th>Satuan</th><th>Qty</th></tr></thead><tbody>`;
+    mat.forEach(m=>html+=`<tr><td>${m.item}</td><td class="center">${m.satuan}</td><td class="center">${m.qty}</td></tr>`);
+    html+="</tbody></table>";
+  }
+  $("ketContent").innerHTML=html;
+  $("ketOverlay").style.display="flex";
+}
+function closeKetPopup(){ $("ketOverlay").style.display="none"; }
+
+// ==================== INIT ==============================
+loadPlans();
+</script>
+</body>
+</html>
