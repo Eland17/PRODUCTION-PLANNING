@@ -165,12 +165,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// ======================= ELEMENTS ===========================
 const $ = id => document.getElementById(id);
 const tbody = document.querySelector("#plansTable tbody");
 let plans = [];
 
-// ======================= RENDER =============================
 function render(){
   tbody.innerHTML="";
   const lineOrder = ["2","2A","2B","3","4","5","6","7"];
@@ -185,11 +183,12 @@ function render(){
     const endClass = (p.end_sew===todayStr)?"background-red":"";
     const materialData=p.material||[];
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${p.line||""}</td>
-      <td>${p.buyer||""}</td>
-      <td>${p.style||""}</td>
-      <td>${p.description||""}</td>
-      <td>${p.po||""}</td>
+    tr.innerHTML=`
+      <td class="center">${p.line||""}</td>
+      <td class="center">${p.buyer||""}</td>
+      <td class="center">${p.style||""}</td>
+      <td class="center">${p.description||""}</td>
+      <td class="center">${p.po||""}</td>
       <td class="right">${p.qty?.toLocaleString()||""}</td>
       <td class="right">${p.target_day||""}</td>
       <td class="${startClass}">${p.start_sew||""}</td>
@@ -210,7 +209,6 @@ function render(){
   });
 }
 
-// ======================= STATUS PILLS =======================
 function statusPill(status){
   if(!status) return '<span class="pill">Planned</span>';
   if(status==="Finished") return '<span class="pill green">Finished</span>';
@@ -218,7 +216,6 @@ function statusPill(status){
   return `<span class="pill">${status}</span>`;
 }
 
-// ======================= END SEW CALC =======================
 function computeEndSew(startStr, qty, target){
   if(!startStr||!qty||!target) return "";
   const totalDays=Math.ceil(qty/target);
@@ -231,7 +228,6 @@ function computeEndSew(startStr, qty, target){
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// ======================= FORM COLLECT ======================
 function collectForm(){
   const start=$("start_sew").value, qty=Number($("qty").value), target=Number($("target_day").value);
   const computedEnd=computeEndSew(start, qty, target);
@@ -257,7 +253,6 @@ function collectForm(){
   };
 }
 
-// ======================= MATERIAL TABLE ====================
 function addMaterialRow(item="", satuan="", qty=""){
   const tbodyMat=document.querySelector("#materialTable tbody");
   const tr=document.createElement("tr");
@@ -269,25 +264,19 @@ function addMaterialRow(item="", satuan="", qty=""){
 }
 $("addMaterialBtn").onclick=()=>addMaterialRow();
 
-// ======================= FIRESTORE CRUD ====================
 function loadPlans(){
   db.collection("planning_produksi").orderBy("start_sew").get()
   .then(snap=>{
     plans = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
     render();
-  })
-  .catch(err=>console.error(err));
+  });
 }
 
 function savePlan(data, id){
   if(id){
-    db.collection("planning_produksi").doc(id).set(data)
-    .then(()=>{ loadPlans(); })
-    .catch(err=>console.error(err));
+    db.collection("planning_produksi").doc(id).set(data).then(()=>loadPlans());
   } else {
-    db.collection("planning_produksi").add(data)
-    .then(()=>{ loadPlans(); })
-    .catch(err=>console.error(err));
+    db.collection("planning_produksi").add(data).then(()=>loadPlans());
   }
 }
 
@@ -310,7 +299,7 @@ function editPlan(id){
   $("end_sew").value = p.end_sew||"";
   $("del_date").value = p.del_date||"";
   $("status").value = p.status||"Planned";
-  $("status_ket").value = p.status_ket||"Complete - Material lengkap";
+  $("status_ket").value = p.status_ket||"";
   $("keterangan").value = p.keterangan||"";
   document.querySelector("#materialTable tbody").innerHTML="";
   (p.material||[]).forEach(m=>addMaterialRow(m.item,m.satuan,m.qty));
@@ -339,7 +328,6 @@ function clearForm(){
   $("end_sew").value="";
 }
 
-// ======================= POPUP CONTROL ====================
 function openPopup(){ $("overlay").style.display="flex"; }
 function closePopup(){ $("overlay").style.display="none"; }
 $("openPopup").onclick=openPopup;
@@ -353,59 +341,14 @@ $("printPreviewBtn").onclick = () => {
   <head>
     <title>Production Planning</title>
     <style>
-      @page {
-        size: A4 landscape;
-        margin: 20mm;
-      }
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        color: #000;
-        background: #fff;
-        margin: 0;
-        padding: 0;
-      }
-      h1 {
-        text-align: center;
-        font-size: 18px;
-        font-weight: 600;
-        margin: 20px 0 10px 0;
-      }
-      table {
-        width: 90%;
-        margin: 0 auto;
-        border-collapse: collapse;
-        font-size: 12px;
-      }
-      th, td {
-        border: 1px solid #444;
-        padding: 6px 8px;
-      }
-      th {
-        background: #d9d9d9;
-        text-align: center;
-        font-weight: 600;
-      }
-      td {
-        text-align: center;
-      }
-      td.right {
-        text-align: right;
-      }
-      tr:nth-child(even) {
-        background: #f9f9f9;
-      }
-      @media print {
-        body {
-          margin: 0;
-        }
-        h1 {
-          margin-top: 10mm;
-        }
-        table {
-          width: 90%;
-          margin: auto;
-        }
-      }
+      @page { size: A4 landscape; margin: 20mm; }
+      body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; color: #000; background: #fff; margin: 0; padding: 0; }
+      h1 { text-align: center; font-size: 18px; font-weight: 600; margin: 20px 0 10px 0; }
+      table { width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 12px; }
+      th, td { border: 1px solid #444; padding: 6px 8px; text-align: center; }
+      th { background: #d9d9d9; font-weight: 600; }
+      td.right { text-align: right; }
+      tr:nth-child(even) { background: #f9f9f9; }
     </style>
   </head>
   <body>
@@ -426,7 +369,6 @@ $("printPreviewBtn").onclick = () => {
         </tr>
       </thead>
       <tbody>`;
-
   plans.forEach(p => {
     html += `
       <tr>
@@ -442,13 +384,11 @@ $("printPreviewBtn").onclick = () => {
         <td>${p.del_date || ""}</td>
       </tr>`;
   });
-
   html += `
       </tbody>
     </table>
   </body>
   </html>`;
-
   const win = window.open("", "_blank");
   win.document.write(html);
   win.document.close();
@@ -456,7 +396,6 @@ $("printPreviewBtn").onclick = () => {
   win.print();
 };
 
-// ======================= INIT ===============================
 loadPlans();
 </script>
 </body>
