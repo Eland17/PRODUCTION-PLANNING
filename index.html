@@ -233,6 +233,19 @@ function computeEndSew(startStr, qty, target){
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// ==================== UPDATE END SEW OTOMATIS ===================
+function updateEndSew() {
+  const start = $("start_sew").value;
+  const qty = Number($("qty").value);
+  const target = Number($("target_day").value);
+  $("end_sew").value = computeEndSew(start, qty, target);
+}
+
+// Event listener supaya End Sew update otomatis
+$("start_sew").addEventListener("change", updateEndSew);
+$("qty").addEventListener("input", updateEndSew);
+$("target_day").addEventListener("input", updateEndSew);
+
 // ==================== FORM & MATERIAL ======================
 function collectForm(){
   const start=$("start_sew").value, qty=Number($("qty").value), target=Number($("target_day").value);
