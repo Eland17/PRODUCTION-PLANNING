@@ -5,8 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planning Produksi</title>
 <style>
-body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #e9e7dd; margin:0; padding:20px; }
-.card { background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.08); padding:15px; max-width:1100px; margin:auto; }
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #e9e7dd;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center; /* center horizontal */
+}
+
+#wrapper {
+  transform: scale(1.2);
+  transform-origin: top center; /* scaling dari tengah atas */
+}
+
+.card {
+  background:#fff;
+  border:1px solid #ccc;
+  border-radius:4px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.08);
+  padding:15px;
+  max-width:1100px;
+  width: 100%;
+}
+
 h1 { font-size:18px; margin:0 0 10px; }
 .header-actions { display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px; }
 .btn { background:#f8f9fa; border:1px solid #ccc; border-radius:4px; font-size:12px; padding:6px 10px; cursor:pointer; transition:0.2s; }
@@ -64,6 +86,7 @@ textarea { resize: vertical; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
+<div id="wrapper">
 <div class="card">
 <h1>Production Planning</h1>
 <div class="header-actions">
@@ -91,6 +114,7 @@ textarea { resize: vertical; }
   </thead>
   <tbody></tbody>
 </table>
+</div>
 </div>
 
 <!-- Popup Form -->
