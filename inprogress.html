@@ -13,7 +13,6 @@ nav a:hover { text-decoration:underline; }
 .card { background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.08); padding:15px; }
 h1 { font-size:18px; margin:0 0 10px; }
 .header-actions { display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px; }
-/* Tombol Add Plan dihapus */
 .btn { background:#f8f9fa; border:1px solid #ccc; border-radius:4px; font-size:12px; padding:6px 10px; cursor:pointer; transition:0.2s; }
 .btn:hover { background:#f0f0f0; }
 .btn.primary { background:#007bff; color:white; border-color:#007bff; }
@@ -25,20 +24,35 @@ td.right { text-align:right; }
 td.center { text-align:center; }
 tr:nth-child(even){ background:#fafafa; }
 .pill { padding:3px 6px; border-radius:4px; font-size:11px; }
-.overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:10; }
-.popup { background:#fff; border-radius:6px; padding:20px; width:95%; max-width:650px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+
+.overlay { 
+  position:fixed; top:0; left:0; width:100%; height:100%; 
+  background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; 
+  z-index:10; overflow:hidden;
+}
+
+.popup {
+  background:#fff; border-radius:6px; padding:20px;
+  width:95%; max-width:650px;
+  max-height:90vh;                 /* tinggi maksimal popup */
+  overflow-y:auto;                 /* scroll di dalam popup */
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+
 .popup h2 { margin-top:0; font-size:16px; text-align:center; border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:15px; }
 form { display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; }
 label { display:block; margin-bottom:3px; color:#333; }
 input, select, textarea { width:100%; padding:5px 8px; border:1px solid #ccc; border-radius:4px; font-size:12px; box-sizing:border-box; }
 textarea { resize: vertical; }
 .form-actions { grid-column: span 2; display:flex; justify-content:flex-end; gap:6px; margin-top:5px; }
+
 #materialTable { width:100%; border-collapse: collapse; margin-top:5px; font-size:12px; }
 #materialTable th, #materialTable td { border:1px solid #ddd; padding:4px 6px; }
 #materialTable th { background:#f3f3f3; text-align:center; }
 #materialTable td { text-align:left; }
 #materialTable td.center { text-align:center; }
 .remove-btn { color:red; cursor:pointer; font-size:12px; }
+
 .ket-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:20; }
 .ket-popup { background:#fff; border-radius:6px; padding:15px; width:90%; max-width:400px; box-shadow:0 4px 10px rgba(0,0,0,0.3); font-size:12px; }
 .ket-popup h3 { margin-top:0; font-size:14px; text-align:center; border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:10px; }
@@ -47,12 +61,15 @@ textarea { resize: vertical; }
 .ket-popup th { background:#f3f3f3; text-align:center; }
 .ket-popup td { text-align:left; }
 .ket-popup td.center { text-align:center; }
+
 .pagination { margin-top:8px; text-align:center; }
 .pagination button { margin:0 2px; padding:4px 8px; border:1px solid #ccc; border-radius:4px; cursor:pointer; font-size:12px; }
 .pagination button.active { background:#007bff; color:white; border-color:#007bff; }
+
 .status-complete { color: green; font-weight:bold; cursor:pointer; text-decoration:underline; }
 .status-major { color: red; font-weight:bold; cursor:pointer; text-decoration:underline; }
 .status-minor { color: orange; font-weight:bold; cursor:pointer; text-decoration:underline; }
+
 @media (max-width:600px){ form{grid-template-columns:1fr;} }
 </style>
 
@@ -69,9 +86,7 @@ textarea { resize: vertical; }
 
 <div class="card">
 <h1>In Progress Production</h1>
-<div class="header-actions">
-  <!-- Tombol Add Plan dihapus -->
-</div>
+<div class="header-actions"></div>
 
 <table id="plansTable">
   <thead>
@@ -88,7 +103,7 @@ textarea { resize: vertical; }
 </div>
 </div>
 
-<!-- Popup Form (Edit Plan tetap ada) -->
+<!-- Popup Form (Edit Plan) -->
 <div class="overlay" id="overlay">
   <div class="popup">
     <h2>Edit Rencana Produksi</h2>
@@ -220,19 +235,36 @@ function renderPagination(total){
   }
 }
 
-// ==================== FIRESTORE LOAD ======================
-function loadPlans(){
-  db.collection("planning_produksi").orderBy("start_sew").get().then(snap=>{
-    plans=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-    const today = new Date().toISOString().slice(0,10);
-    plans.forEach(p=>{
-      if(p.status==="Planned" && p.start_sew<=today){
-        db.collection("planning_produksi").doc(p.id).update({status:"On Progress"});
+function loadPlans() {
+  db.collection("planning_produksi").orderBy("start_sew").get().then(snap => {
+    plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const today = new Date().toISOString().slice(0, 10);
+
+    plans.forEach(p => {
+      if (p.start_sew) {
+        if (p.start_sew > today) {
+          // Jika start_sew lebih besar dari hari ini → Planned
+          if (p.status !== "Planned") {
+            db.collection("planning_produksi").doc(p.id).update({ status: "Planned" });
+          }
+        } else if (p.start_sew <= today && p.status !== "Finished") {
+          // Jika sudah waktunya mulai → On Progress
+          if (p.status !== "On Progress") {
+            db.collection("planning_produksi").doc(p.id).update({ status: "On Progress" });
+          }
+        }
+      } else {
+        // Jika belum ada tanggal → tetap Planned
+        if (p.status !== "Planned") {
+          db.collection("planning_produksi").doc(p.id).update({ status: "Planned" });
+        }
       }
     });
+
     renderTable(currentPage);
   });
 }
+
 
 function deletePlan(id){ 
   if(confirm("Hapus data ini?")){ 
@@ -240,7 +272,6 @@ function deletePlan(id){
   } 
 }
 
-// ==================== KETERANGAN ========================
 function showKeterangan(text,mat){
   let html=`<p>${text||"-"}</p>`;
   if(mat.length){
@@ -253,10 +284,8 @@ function showKeterangan(text,mat){
 }
 function closeKetPopup(){ $("ketOverlay").style.display="none"; }
 
-// ==================== INIT ==============================
 loadPlans();
 
-// ==================== POPUP EDIT =========================
 function editPlan(id){
   const p=plans.find(x=>x.id===id);
   $("line").value=p.line||"";
@@ -321,18 +350,17 @@ function collectForm(){
 
 function computeEndSew(start,qty,target){
   if(!start||!qty||!target) return "";
-  const startDate=new Date(start); let remaining=qty; let date=new Date(startDate);
-  while(remaining>0){ const day=date.getDay(); if(day!==0 && day!==6) remaining-=target; date.setDate(date.getDate()+1);}
-  date.setDate(date.getDate()-1);
-  return date.toISOString().slice(0,10);
+  const startDate=new Date(start); let remaining=qty; let date=startDate;
+  while(remaining>0){ if(date.getDay()!==0) remaining-=target; date.setDate(date.getDate()+1); }
+  const endDate=new Date(date); endDate.setDate(endDate.getDate()-1);
+  return endDate.toISOString().slice(0,10);
 }
 
-// Update End Sew saat edit
-$("start_sew").addEventListener("change",()=>{$("end_sew").value=computeEndSew($("start_sew").value,Number($("qty").value),Number($("target_day").value));});
-$("qty").addEventListener("input",()=>{$("end_sew").value=computeEndSew($("start_sew").value,Number($("qty").value),Number($("target_day").value));});
-$("target_day").addEventListener("input",()=>{$("end_sew").value=computeEndSew($("start_sew").value,Number($("qty").value),Number($("target_day").value));});
-
-$("cancelPopup").onclick=()=>{$("overlay").style.display="none";}
+$("cancelPopup").onclick=()=>{ $("overlay").style.display="none"; };
+$("target_day").oninput=$("qty").oninput=$("start_sew").onchange=()=>{
+  const end=computeEndSew($("start_sew").value,Number($("qty").value),Number($("target_day").value));
+  $("end_sew").value=end;
+};
 </script>
 </body>
 </html>
