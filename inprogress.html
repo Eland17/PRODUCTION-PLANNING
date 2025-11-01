@@ -236,35 +236,32 @@ function renderPagination(total){
 }
 
 function loadPlans() {
-  db.collection("planning_produksi").orderBy("start_sew").get().then(snap => {
+  db.collection("planning_produksi").orderBy("start_sew").get().then(async snap => {
     plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const today = new Date().toISOString().slice(0, 10);
+    const updates = [];
 
     plans.forEach(p => {
       if (p.start_sew) {
-        if (p.start_sew > today) {
-          // Jika start_sew lebih besar dari hari ini → Planned
-          if (p.status !== "Planned") {
-            db.collection("planning_produksi").doc(p.id).update({ status: "Planned" });
-          }
-        } else if (p.start_sew <= today && p.status !== "Finished") {
-          // Jika sudah waktunya mulai → On Progress
-          if (p.status !== "On Progress") {
-            db.collection("planning_produksi").doc(p.id).update({ status: "On Progress" });
-          }
+        if (p.start_sew > today && p.status !== "Planned") {
+          updates.push(db.collection("planning_produksi").doc(p.id).update({ status: "Planned" }));
+        } else if (p.start_sew <= today && p.status !== "Finished" && p.status !== "On Progress") {
+          updates.push(db.collection("planning_produksi").doc(p.id).update({ status: "On Progress" }));
         }
-      } else {
-        // Jika belum ada tanggal → tetap Planned
-        if (p.status !== "Planned") {
-          db.collection("planning_produksi").doc(p.id).update({ status: "Planned" });
-        }
+      } else if (p.status !== "Planned") {
+        updates.push(db.collection("planning_produksi").doc(p.id).update({ status: "Planned" }));
       }
     });
 
+    // Tunggu semua update selesai dulu baru ambil ulang data
+    await Promise.all(updates);
+
+    // Ambil ulang data terbaru setelah semua update selesai
+    const refreshed = await db.collection("planning_produksi").orderBy("start_sew").get();
+    plans = refreshed.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderTable(currentPage);
   });
 }
-
 
 function deletePlan(id){ 
   if(confirm("Hapus data ini?")){ 
