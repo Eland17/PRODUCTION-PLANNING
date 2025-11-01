@@ -145,7 +145,7 @@ textarea { resize: vertical; }
 <!-- Keterangan Popup -->
 <div class="ket-overlay" id="ketOverlay">
   <div class="ket-popup">
-    <h3>Detail Keterangan</h3>
+    <h3>Status Material</h3>
     <div id="ketContent"></div>
     <div style="text-align:center; margin-top:10px;">
       <button class="btn" onclick="closeKetPopup()">Close</button>
@@ -295,7 +295,7 @@ function renderTable(page=1){
       <td><span class="pill">${p.status||"Planned"}</span></td>
       <td>
         <span class="${ketClass}"
-          onclick='showKeterangan("${(p.keterangan||"").replace(/"/g,"&quot;")}", ${JSON.stringify(p.material||[])})'>
+          onclick='showKeterangan("${(p.keterangan||"").replace(/"/g,"&quot;")}", ${JSON.stringify(p.material||[])}, "${p.style||""}", ${p.qty||0})'>
           ${p.status_ket||"-"}
         </span>
       </td>
@@ -399,15 +399,29 @@ function computeEndSew(start, qty, target){
 }
 
 // ==================== KETERANGAN ========================
-function showKeterangan(text, mat){
-  let html=`<p>${text||"-"}</p>`;
-  if(mat.length){
-    html+=`<table><thead><tr><th>Material</th><th>Satuan</th><th>Qty</th></tr></thead><tbody>`;
-    mat.forEach(m=>html+=`<tr><td>${m.item}</td><td class="center">${m.satuan}</td><td class="center">${m.qty}</td></tr>`);
-    html+="</tbody></table>";
+function showKeterangan(text, mat, style="", qty="") {
+  let html = `
+    <table style="margin-bottom:10px; width:100%; border-collapse:collapse;">
+      <tr><th style="text-align:left; width:40%;">Style</th><td>${style || "-"}</td></tr>
+      <tr><th style="text-align:left;">Qty Order</th><td>${qty ? qty.toLocaleString() : "-"}</td></tr>
+    </table>
+    <p><strong>Keterangan :</strong><br>${text || "-"}</p>
+  `;
+
+  if (mat && mat.length) {
+    html += `<table>
+      <thead><tr><th>Material</th><th>Satuan</th><th>Qty</th></tr></thead><tbody>`;
+    mat.forEach(m => html += `
+      <tr>
+        <td>${m.item}</td>
+        <td class="center">${m.satuan}</td>
+        <td class="center">${m.qty}</td>
+      </tr>`);
+    html += "</tbody></table>";
   }
-  $("ketContent").innerHTML=html;
-  $("ketOverlay").style.display="flex";
+
+  $("ketContent").innerHTML = html;
+  $("ketOverlay").style.display = "flex";
 }
 function closeKetPopup(){ $("ketOverlay").style.display="none"; }
 
@@ -429,3 +443,4 @@ loadPlans();
 </script>
 </body>
 </html>
+
