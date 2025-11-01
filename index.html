@@ -5,17 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planned Production</title>
 <style>
-body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:#e9e7dd; margin:0; padding:20px; display:flex; justify-content:center; }
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background:#e9e7dd; margin:0; padding:20px;
+  display:flex; justify-content:center;
+}
 #wrapper { max-width:1500px; width:100%; }
 nav { margin-bottom:10px; font-size:14px; }
 nav a { margin-right:10px; text-decoration:none; color:#007bff; }
 nav a:hover { text-decoration:underline; }
-.card { background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.08); padding:15px; }
+
+.card {
+  background:#fff; border:1px solid #ccc; border-radius:4px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.08); padding:15px;
+}
 h1 { font-size:18px; margin:0 0 10px; }
-.header-actions { display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px; }
-.btn { background:#f8f9fa; border:1px solid #ccc; border-radius:4px; font-size:12px; padding:6px 10px; cursor:pointer; transition:0.2s; }
+
+.header-bar {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:10px; flex-wrap:wrap; gap:8px;
+}
+.header-bar input {
+  padding:6px; border:1px solid #999; border-radius:4px;
+  font-size:12px; width:150px;
+}
+
+.btn {
+  background:#f8f9fa; border:1px solid #ccc; border-radius:4px;
+  font-size:12px; padding:6px 10px; cursor:pointer; transition:0.2s;
+}
 .btn:hover { background:#f0f0f0; }
 .btn.primary { background:#007bff; color:white; border-color:#007bff; }
+
 table { width:100%; border-collapse:collapse; font-size:12px; }
 th, td { border:1px solid #ddd; padding:6px 8px; }
 th { background:#f3f3f3; text-align:center; }
@@ -23,45 +44,74 @@ td { text-align:left; }
 td.right { text-align:right; }
 td.center { text-align:center; }
 tr:nth-child(even){ background:#fafafa; }
-.pill { padding:3px 6px; border-radius:4px; font-size:11px; }
 
-/* STATUS KETERANGAN COLORS */
-.status-complete { color: green; font-weight:bold; cursor:pointer; text-decoration:underline; }
-.status-major { color: red; font-weight:bold; cursor:pointer; text-decoration:underline; }
-.status-minor { color: orange; font-weight:bold; cursor:pointer; text-decoration:underline; }
+.pill { padding:3px 6px; border-radius:4px; font-size:11px; }
+.status-complete { color:green; font-weight:bold; cursor:pointer; text-decoration:underline; }
+.status-major { color:red; font-weight:bold; cursor:pointer; text-decoration:underline; }
+.status-minor { color:orange; font-weight:bold; cursor:pointer; text-decoration:underline; }
 
 /* Popup */
-.overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:10; }
-.popup { background:#fff; border-radius:6px; padding:20px; width:95%; max-width:650px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-.popup h2 { margin-top:0; font-size:16px; text-align:center; border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:15px; }
+.overlay { position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:10; }
+.popup {
+  background:#fff; border-radius:6px; padding:20px;
+  width:95%; max-width:650px; box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+.popup h2 {
+  margin-top:0; font-size:16px; text-align:center;
+  border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:15px;
+}
+
 form { display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; }
 label { display:block; margin-bottom:3px; color:#333; }
-input, select, textarea { width:100%; padding:5px 8px; border:1px solid #ccc; border-radius:4px; font-size:12px; box-sizing:border-box; }
+input, select, textarea {
+  width:100%; padding:5px 8px; border:1px solid #ccc;
+  border-radius:4px; font-size:12px; box-sizing:border-box;
+}
 textarea { resize: vertical; }
-.form-actions { grid-column: span 2; display:flex; justify-content:flex-end; gap:6px; margin-top:5px; }
+.form-actions {
+  grid-column: span 2; display:flex; justify-content:flex-end; gap:6px; margin-top:5px;
+}
+
 #materialTable { width:100%; border-collapse: collapse; margin-top:5px; font-size:12px; }
 #materialTable th, #materialTable td { border:1px solid #ddd; padding:4px 6px; }
 #materialTable th { background:#f3f3f3; text-align:center; }
-#materialTable td { text-align:left; }
 #materialTable td.center { text-align:center; }
 .remove-btn { color:red; cursor:pointer; font-size:12px; }
-.ket-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:20; }
-.ket-popup { background:#fff; border-radius:6px; padding:15px; width:90%; max-width:400px; box-shadow:0 4px 10px rgba(0,0,0,0.3); font-size:12px; }
-.ket-popup h3 { margin-top:0; font-size:14px; text-align:center; border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:10px; }
+
+.ket-overlay {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.4); display:none; justify-content:center; align-items:center; z-index:20;
+}
+.ket-popup {
+  background:#fff; border-radius:6px; padding:15px;
+  width:90%; max-width:400px; box-shadow:0 4px 10px rgba(0,0,0,0.3); font-size:12px;
+}
+.ket-popup h3 {
+  margin-top:0; font-size:14px; text-align:center;
+  border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:10px;
+}
 .ket-popup table { width:100%; border-collapse: collapse; margin-top:10px; font-size:12px; }
 .ket-popup th, .ket-popup td { border:1px solid #ddd; padding:4px 6px; }
 .ket-popup th { background:#f3f3f3; text-align:center; }
-.ket-popup td { text-align:left; }
-.ket-popup td.center { text-align:center; }
+
 .pagination { margin-top:8px; text-align:center; }
-.pagination button { margin:0 2px; padding:4px 8px; border:1px solid #ccc; border-radius:4px; cursor:pointer; font-size:12px; }
+.pagination button {
+  margin:0 2px; padding:4px 8px; border:1px solid #ccc; border-radius:4px;
+  cursor:pointer; font-size:12px;
+}
 .pagination button.active { background:#007bff; color:white; border-color:#007bff; }
-@media (max-width:600px){ form{grid-template-columns:1fr;} }
+
+@media (max-width:600px){
+  .header-bar { flex-direction:column; align-items:stretch; }
+  .header-bar input { width:100%; }
+}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
+
 <body>
 <div id="wrapper">
 <nav>
@@ -71,23 +121,26 @@ textarea { resize: vertical; }
 </nav>
 
 <div class="card">
-<h1>Planned Production</h1>
-<div class="header-actions">
-  <button class="btn primary" id="openPopup">+ Add Plan</button>
-</div>
+  <h1>Planned Production</h1>
 
-<table id="plansTable">
-  <thead>
-    <tr>
-      <th>Line</th><th>Buyer</th><th>Style</th><th>Description</th>
-      <th>PO</th><th class="right">Qty</th><th class="right">Target</th>
-      <th>Start Sew</th><th>End Sew</th><th>Delivery</th>
-      <th>Status</th><th>Status Material</th><th>Actions</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-<div class="pagination" id="pagination"></div>
+  <!-- 🔹 SEARCH & ADD PLAN sejajar -->
+  <div class="header-bar">
+    <input type="text" id="searchInput" placeholder="Cari Line / Buyer / Style...">
+    <button class="btn primary" id="openPopup">+ Add Plan</button>
+  </div>
+
+  <table id="plansTable">
+    <thead>
+      <tr>
+        <th>Line</th><th>Buyer</th><th>Style</th><th>Description</th>
+        <th>PO</th><th class="right">Qty</th><th class="right">Target</th>
+        <th>Start Sew</th><th>End Sew</th><th>Delivery</th>
+        <th>Status</th><th>Status Material</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div class="pagination" id="pagination"></div>
 </div>
 </div>
 
@@ -443,6 +496,96 @@ function renderPagination(total){
     pag.appendChild(btn);
   }
 }
+
+// ==================== SEARCH FILTER ======================
+$("searchInput").addEventListener("keyup", function() {
+  const keyword = this.value.trim();
+  // panggil ulang renderTable ke halaman 1 dengan keyword
+  currentPage = 1;
+  renderTable(currentPage, keyword);
+});
+
+// ==================== RENDER TABLE (update) =========================
+function renderTable(page = 1, keyword = "") {
+  tbody.innerHTML = "";
+
+  let filtered = plans.filter(p => p.status === "Planned" || !p.status).sort(sortLine);
+
+  // Jika ada keyword
+  if (keyword) {
+    // Jika keyword hanya angka (mis "3"), kita asumsikan user ingin cari berdasarkan LINE saja
+    if (/^\d+$/.test(keyword)) {
+      filtered = filtered.filter(p => {
+        const line = (p.line || "").toString().trim();
+        // ambil angka di awal line jika ada, mis "3A" -> "3"
+        const m = line.match(/^(\d+)/);
+        return m && m[1] === keyword;
+        // Jika mau match hanya exact string (mis line === "3"), ganti return dengan:
+        // return line === keyword;
+      });
+    } else {
+      // Pencarian umum (line, buyer, style, description)
+      const kw = keyword.toLowerCase();
+      filtered = filtered.filter(p =>
+        ((p.line || "").toString().toLowerCase().includes(kw)) ||
+        ((p.buyer || "").toLowerCase().includes(kw)) ||
+        ((p.style || "").toLowerCase().includes(kw)) ||
+        ((p.description || "").toLowerCase().includes(kw))
+      );
+    }
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; color:gray;">Tidak ada data Planned</td></tr>`;
+    $("pagination").innerHTML = "";
+    return;
+  }
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  // pastikan page tidak melebihi totalPages
+  if (page > totalPages) page = totalPages;
+  const startIdx = (page - 1) * rowsPerPage;
+  const endIdx = startIdx + rowsPerPage;
+  const pageData = filtered.slice(startIdx, endIdx);
+
+  pageData.forEach(p => {
+    const ketClass =
+      p.status_ket === "Completed" ? "status-complete" :
+      p.status_ket === "Major Issue" ? "status-major" :
+      p.status_ket === "Minor Issue" ? "status-minor" : "";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="center">${p.line || ""}</td>
+      <td class="center">${p.buyer || ""}</td>
+      <td class="center">${p.style || ""}</td>
+      <td class="center">${p.description || ""}</td>
+      <td class="center">${p.po || ""}</td>
+      <td class="right">${p.qty?.toLocaleString() || ""}</td>
+      <td class="right">${p.target_day || ""}</td>
+      <td>${p.start_sew || ""}</td>
+      <td>${p.end_sew || ""}</td>
+      <td>${p.del_date || ""}</td>
+      <td><span class="pill">${p.status || "Planned"}</span></td>
+      <td><span class="${ketClass}">${p.status_ket || "-"}</span></td>
+      <td>
+        <button class="btn" onclick='editPlan("${p.id}")'>Edit</button>
+        <button class="btn" style="color:red;" onclick='deletePlan("${p.id}")'>Del</button>
+      </td>`;
+
+    const statusEl = tr.querySelector(`.${ketClass}`);
+    if (statusEl) {
+      statusEl.addEventListener("click", () =>
+        showKeterangan(p.keterangan || "", p.material || [], p.style || "", p.qty || 0)
+      );
+    }
+
+    tbody.appendChild(tr);
+  });
+
+  renderPagination(totalPages);
+}
+
 
 // ==================== INIT ==============================
 loadPlans();
