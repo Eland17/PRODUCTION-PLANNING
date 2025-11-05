@@ -45,6 +45,25 @@ button.nav { background:#2196F3; color:white; }
     .modal-form{grid-template-columns:1fr;} 
     .nav-row { flex-direction: column; align-items: flex-start; gap:5px; }
 }
+.toast {
+    visibility: hidden;
+    min-width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 10px;
+    position: fixed;
+    z-index: 20;
+    right: 20px;
+    top: 20px;
+}
+.toast.show {
+    visibility: visible;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+@keyframes fadein { from {opacity:0;} to {opacity:1;} }
+@keyframes fadeout { from {opacity:1;} to {opacity:0;} }
 </style>
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -141,7 +160,10 @@ button.nav { background:#2196F3; color:white; }
     </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyACOluEhfPw4JBlBaHyXtf1k3TIJAHikKo",
   authDomain: "inventory-gudang-16dfe.firebaseapp.com",
@@ -153,6 +175,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// ===== Variabel
 const STORAGE_KEY='alokasiKainData';
 const tbody=document.querySelector('#kainTable tbody');
 const finishedTbody=document.querySelector('#finishedTable tbody');
@@ -165,11 +188,11 @@ const linkMain=document.getElementById('linkMain');
 const linkFinished=document.getElementById('linkFinished');
 const pageMain=document.getElementById('pageMain');
 const pageFinished=document.getElementById('pageFinished');
+const toast=document.getElementById('toast');
 
 let editRow=null;
 let loadingHistory=[];
 
-// modal inputs
 const modalNoPO=document.getElementById('modalNoPO');
 const modalBuyer=document.getElementById('modalBuyer');
 const modalStyle=document.getElementById('modalStyle');
@@ -187,7 +210,7 @@ const loadingList=document.getElementById('loadingList');
 const modalKeterangan=document.getElementById('modalKeterangan');
 const modalStatus=document.getElementById('modalStatus');
 
-// ===== Fungsi hitung
+// ===== Fungsi modal & perhitungan
 function updateKebOrder(){
     let qty=parseFloat(modalQty.value)||0;
     let cons=parseFloat(modalCons.value)||0;
@@ -201,8 +224,6 @@ function updateBLCs(){
     modalBLCOrder.value=(totalLoading-kebOrder).toFixed(2);
     modalBLCMarker.value=(totalLoading-kebMarker).toFixed(2);
 }
-
-// ===== Modal
 function showModal(row=null){
     modal.style.display='block';
     loadingHistory=[]; loadingList.innerHTML='';
@@ -226,16 +247,6 @@ function showModal(row=null){
     } else editRow=null;
 }
 function closeModal(){ modal.style.display='none'; }
-
-addLoadingBtn.onclick=()=>{
-    const d=modalLoadingDate.value; 
-    const q=parseFloat(modalLoadingQty.value)||0;
-    if(d && q>0){
-        loadingHistory.push({date:d, qty:q});
-        renderLoadingList();
-        modalLoadingDate.value=''; modalLoadingQty.value='';
-    }
-};
 function renderLoadingList(){
     loadingList.innerHTML='';
     loadingHistory.forEach((l,i)=>{
@@ -246,8 +257,17 @@ function renderLoadingList(){
     updateBLCs();
 }
 function removeLoading(i){ loadingHistory.splice(i,1); renderLoadingList(); }
+addLoadingBtn.onclick=()=>{
+    const d=modalLoadingDate.value; 
+    const q=parseFloat(modalLoadingQty.value)||0;
+    if(d&&q>0){ 
+        loadingHistory.push({date:d,qty:q}); 
+        renderLoadingList(); 
+        modalLoadingDate.value=''; 
+        modalLoadingQty.value=''; 
+    }
+};
 
-// ===== Create Row
 function createRow(data){
     const tr=document.createElement('tr');
     const totalLoading=data.loadingHistory.reduce((s,l)=>s+parseFloat(l.qty),0);
@@ -264,10 +284,10 @@ function createRow(data){
     highlightStatus(tr);
 }
 
-// ===== Highlight
+// ===== Styling status & angka negatif
 function highlightNegativeNumbers(element){
     element.querySelectorAll('td').forEach(td=>{
-        let val=parseFloat(td.textContent.replace(/,/g,'')); 
+        let val=parseFloat(td.textContent.replace(/,/g,''));
         if(!isNaN(val) && val<0) td.classList.add('negative');
     });
 }
@@ -281,60 +301,7 @@ function highlightStatus(row){
     else if(s==='finished') statusCell.classList.add('status-finished');
 }
 
-// ===== Add / Edit / Delete
-addRowBtn.onclick=()=>{ 
-    editRow=null;
-    modalNoPO.value=''; modalBuyer.value=''; modalStyle.value=''; modalNamaBarang.value='';
-    modalQty.value=''; modalCons.value=''; modalKebOrder.value=''; modalKebMarker.value='';
-    modalBLCOrder.value=''; modalBLCMarker.value=''; modalKeterangan.value=''; modalStatus.value='Draft';
-    loadingHistory=[]; renderLoadingList(); showModal();
-};
-
-saveBtn.onclick=async ()=>{
-    const qty=parseFloat(modalQty.value)||0;
-    const cons=parseFloat(modalCons.value)||0;
-    const kebOrder=(qty*cons).toFixed(2);
-    const kebMarker=parseFloat(modalKebMarker.value)||0;
-    const totalLoading=loadingHistory.reduce((s,l)=>s+l.qty,0);
-    const blcOrder=(totalLoading-kebOrder).toFixed(2);
-    const blcMarker=(totalLoading-kebMarker).toFixed(2);
-
-    const data={
-        noPO:modalNoPO.value, buyer:modalBuyer.value, style:modalStyle.value, namaBarang:modalNamaBarang.value,
-        qty:qty, consumption:cons, kebOrder:kebOrder, kebMarker:kebMarker.toFixed(2),
-        blcOrder:blcOrder, blcMarker:blcMarker, loadingHistory:loadingHistory,
-        status:modalStatus.value, keterangan:modalKeterangan.value
-    };
-
-    try {
-        // Firestore
-        await db.collection('alokasiKain').add(data);
-        showNotification("Data tersimpan di Firestore!");
-    } catch(e){
-        console.warn("Firestore gagal:", e);
-        showNotification("Gagal simpan ke Firestore, disimpan di localStorage");
-    }
-
-    if(editRow) editRow.remove();
-    createRow(data);
-    saveToLocalStorage(data);
-    closeModal();
-};
-
-deleteBtn.onclick=()=>{
-    if(editRow && confirm("Hapus baris ini?")){
-        editRow.remove();
-        closeModal();
-    }
-};
-cancelBtn.onclick=()=>closeModal();
-window.onclick=e=>{ if(e.target==modal) closeModal(); };
-
-// ===== NAVIGASI =====
-linkMain.onclick=()=>{ pageMain.style.display='block'; pageFinished.style.display='none'; addRowBtn.style.display='inline-block'; }
-linkFinished.onclick=()=>{ pageMain.style.display='none'; pageFinished.style.display='block'; addRowBtn.style.display='none'; }
-
-// ===== LOCAL STORAGE =====
+// ===== LocalStorage
 function saveToLocalStorage(){
     let all=[]; [...tbody.children,...finishedTbody.children].forEach(tr=>{
         all.push({
@@ -364,12 +331,69 @@ function loadFromLocalStorage(){
     });
 }
 
-function showNotification(msg){
-    alert(msg);
+// ===== Firestore
+function saveToFirestore(data){
+    db.collection('alokasiKain').add(data)
+    .then(()=>showToast('Data berhasil disimpan di Firestore'))
+    .catch(err=>showToast('Gagal menyimpan: '+err.message));
 }
 
-// ===== Load =====
+// ===== Toast
+function showToast(msg){
+    toast.textContent=msg; toast.className='toast show';
+    setTimeout(()=>toast.className='toast',3000);
+}
+
+// ===== Modal tombol
+addRowBtn.onclick=()=>showModal();
+cancelBtn.onclick=()=>closeModal();
+deleteBtn.onclick=()=>{
+    if(editRow){
+        editRow.remove();
+        saveToLocalStorage();
+    }
+    closeModal();
+};
+saveBtn.onclick=()=>{
+    const data={
+        noPO:modalNoPO.value,
+        buyer:modalBuyer.value,
+        style:modalStyle.value,
+        namaBarang:modalNamaBarang.value,
+        qty:modalQty.value,
+        consumption:modalCons.value,
+        kebOrder:modalKebOrder.value,
+        kebMarker:modalKebMarker.value,
+        blcOrder:modalBLCOrder.value,
+        blcMarker:modalBLCMarker.value,
+        loadingHistory,
+        status:modalStatus.value,
+        keterangan:modalKeterangan.value
+    };
+    if(editRow){
+        editRow.remove();
+    }
+    createRow(data);
+    saveToLocalStorage();
+    saveToFirestore(data);
+    closeModal();
+};
+
+// ===== Navigation
+function setActivePage(page){
+    if(page==='main'){ pageMain.style.display='block'; pageFinished.style.display='none'; addRowBtn.style.display='inline-block'; }
+    else { pageMain.style.display='none'; pageFinished.style.display='block'; addRowBtn.style.display='none'; }
+    localStorage.setItem('activePage',page);
+}
+linkMain.onclick=()=>setActivePage('main');
+linkFinished.onclick=()=>setActivePage('finished');
+const savedPage=localStorage.getItem('activePage')||'main';
+setActivePage(savedPage);
+
+// ===== Load data
 loadFromLocalStorage();
+
 </script>
+
 </body>
 </html>
