@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoring Alokasi Kebutuhan Cutting Kain</title>
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.container { max-width:1600px; margin:auto; background:white; padding:20px; border-radius:5px; box-shadow:0 0 10px #ccc; }
+h2 { margin-bottom:10px; }
+table { width:100%; border-collapse:collapse; margin-top:20px; }
+th, td { border:1px solid #ccc; padding:4px; text-align:center; font-size:14px; cursor:pointer; }
+th { background:#eee; }
+.keterangan { text-align:left; white-space:normal; word-wrap:break-word; padding:4px 8px; }
+button { padding:6px 12px; margin:5px 2px; border:none; border-radius:4px; cursor:pointer; }
+button.edit { background:#4CAF50; color:white; }
+button.del { background:#f44336; color:white; }
+button.nav { background:#2196F3; color:white; }
+
+.nav-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.nav-left { display:flex; gap:5px; }
+.nav-right {}
+
+.modal { display:none; position:fixed; z-index:10; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.4); }
+.modal-content { background:#fff; margin:6% auto; padding:20px 25px; border-radius:8px; width:750px; box-shadow:0 5px 20px rgba(0,0,0,0.3); }
+.modal-form { display:grid; grid-template-columns:1fr 1fr; gap:10px 15px; align-items:center; }
+.form-group { display:flex; flex-direction:column; }
+.form-group.full-width { grid-column:1/3; }
+.modal-content input, .modal-content textarea, .modal-content select { padding:6px 8px; font-size:14px; border:1px solid #ccc; border-radius:4px; }
+.modal-content textarea { width:100%; resize:vertical; }
+.modal-actions { margin-top:20px; text-align:right; }
+.modal-actions button { padding:6px 15px; margin-left:10px; border:none; border-radius:4px; font-size:13px; cursor:pointer; }
+.modal-actions button.edit { background:#4CAF50; color:white; }
+.modal-actions button.del { background:#f44336; color:white; }
+.negative { color:red; font-weight:bold; }
+.status-draft { color:blue; font-weight:bold; }
+.status-onprocess { color:green; font-weight:bold; }
+.status-finished { color:red; font-weight:bold; }
+.loading-list { margin-top:5px; max-height:80px; overflow:auto; border:1px solid #ccc; padding:4px; border-radius:4px; }
+.loading-list div { font-size:13px; margin-bottom:2px; display:flex; justify-content:space-between; }
+.loading-list div span { margin-right:10px; }
+.loading-list div button { background:#f44336; color:white; border:none; padding:2px 6px; border-radius:4px; cursor:pointer; font-size:12px; }
+@media(max-width:600px){ 
+    .modal-content{width:95%;} 
+    .modal-form{grid-template-columns:1fr;} 
+    .nav-row { flex-direction: column; align-items: flex-start; gap:5px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Monitoring Alokasi Kebutuhan Cutting Kain</h2>
+
+    <div class="nav-row">
+        <div class="nav-left">
+            <button class="nav" id="linkMain">On Process</button>
+            <button class="nav" id="linkFinished">Finished</button>
+        </div>
+        <div class="nav-right">
+            <button id="addRowBtn" class="edit">Tambah Style</button>
+        </div>
+    </div>
+
+    <!-- MAIN PAGE -->
+    <div id="pageMain">
+        <table id="kainTable">
+            <thead>
+                <tr>
+                    <th>No PO.</th><th>Buyer</th><th>Style</th><th>Nama Barang</th><th>Qty Order</th>
+                    <th>Cons</th><th>Keb Order</th><th>Keb Marker</th><th>BLC Order</th><th>BLC Marker</th>
+                    <th>Total Loading</th><th>Status</th><th>Keterangan</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- FINISHED PAGE -->
+    <div id="pageFinished" style="display:none;">
+        <table id="finishedTable">
+            <thead>
+                <tr>
+                    <th>No PO.</th><th>Buyer</th><th>Style</th><th>Nama Barang</th><th>Qty Order</th>
+                    <th>Cons</th><th>Keb Order</th><th>Keb Marker</th><th>BLC Order</th><th>BLC Marker</th>
+                    <th>Total Loading</th><th>Status</th><th>Keterangan</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL FORM -->
+<div id="formModal" class="modal">
+    <div class="modal-content">
+        <h3 style="text-align:center; margin-bottom:15px;">Isi Data Kain</h3>
+        <div class="modal-form">
+            <div class="form-group"><label>No PO.</label><input type="text" id="modalNoPO"></div>
+            <div class="form-group"><label>Buyer</label><input type="text" id="modalBuyer"></div>
+            <div class="form-group"><label>Style</label><input type="text" id="modalStyle"></div>
+            <div class="form-group"><label>Nama Barang</label><input type="text" id="modalNamaBarang"></div>
+            <div class="form-group"><label>Qty Order</label><input type="number" id="modalQty" oninput="updateKebOrder()"></div>
+            <div class="form-group"><label>Cons</label><input type="number" id="modalCons" oninput="updateKebOrder()"></div>
+            <div class="form-group"><label>Keb Order</label><input type="text" id="modalKebOrder" readonly></div>
+            <div class="form-group"><label>Keb Marker</label><input type="number" id="modalKebMarker" oninput="updateBLCs()"></div>
+            <div class="form-group"><label>BLC Order</label><input type="text" id="modalBLCOrder" readonly></div>
+            <div class="form-group"><label>BLC Marker</label><input type="text" id="modalBLCMarker" readonly></div>
+
+            <div class="form-group full-width">
+                <label>Tambah Loading</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="date" id="modalLoadingDate">
+                    <input type="number" placeholder="Qty" id="modalLoadingQty">
+                    <button type="button" id="addLoadingBtn" class="edit">Tambah</button>
+                </div>
+                <div class="loading-list" id="loadingList"></div>
+            </div>
+
+            <div class="form-group"><label>Status</label>
+                <select id="modalStatus">
+                    <option value="Draft">Draft</option>
+                    <option value="On Process">On Process</option>
+                    <option value="Finished">Finished</option>
+                </select>
+            </div>
+
+            <div class="form-group full-width">
+                <label>Keterangan</label>
+                <textarea id="modalKeterangan" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button id="saveBtn" class="edit">Simpan</button>
+            <button id="deleteBtn" class="del">Hapus</button>
+            <button id="cancelBtn" class="del">Batal</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const STORAGE_KEY='alokasiKainData';
+const tbody=document.querySelector('#kainTable tbody');
+const finishedTbody=document.querySelector('#finishedTable tbody');
+const modal=document.getElementById('formModal');
+const addRowBtn=document.getElementById('addRowBtn');
+const saveBtn=document.getElementById('saveBtn');
+const deleteBtn=document.getElementById('deleteBtn');
+const cancelBtn=document.getElementById('cancelBtn');
+const linkMain=document.getElementById('linkMain');
+const linkFinished=document.getElementById('linkFinished');
+const pageMain=document.getElementById('pageMain');
+const pageFinished=document.getElementById('pageFinished');
+
+let editRow=null;
+let loadingHistory=[];
+
+const modalNoPO=document.getElementById('modalNoPO');
+const modalBuyer=document.getElementById('modalBuyer');
+const modalStyle=document.getElementById('modalStyle');
+const modalNamaBarang=document.getElementById('modalNamaBarang');
+const modalQty=document.getElementById('modalQty');
+const modalCons=document.getElementById('modalCons');
+const modalKebOrder=document.getElementById('modalKebOrder');
+const modalKebMarker=document.getElementById('modalKebMarker');
+const modalBLCOrder=document.getElementById('modalBLCOrder');
+const modalBLCMarker=document.getElementById('modalBLCMarker');
+const modalLoadingDate=document.getElementById('modalLoadingDate');
+const modalLoadingQty=document.getElementById('modalLoadingQty');
+const addLoadingBtn=document.getElementById('addLoadingBtn');
+const loadingList=document.getElementById('loadingList');
+const modalKeterangan=document.getElementById('modalKeterangan');
+const modalStatus=document.getElementById('modalStatus');
+
+function updateKebOrder(){
+    let qty=parseFloat(modalQty.value)||0;
+    let cons=parseFloat(modalCons.value)||0;
+    modalKebOrder.value=(qty*cons).toFixed(2);
+    updateBLCs();
+}
+function updateBLCs(){
+    let kebOrder=parseFloat(modalKebOrder.value)||0;
+    let kebMarker=parseFloat(modalKebMarker.value)||0;
+    let totalLoading=loadingHistory.reduce((s,l)=>s+l.qty,0);
+    modalBLCOrder.value=(totalLoading-kebOrder).toFixed(2);
+    modalBLCMarker.value=(totalLoading-kebMarker).toFixed(2);
+}
+
+function showModal(row=null){
+    modal.style.display='block';
+    loadingHistory=[]; loadingList.innerHTML='';
+    if(row){
+        editRow=row;
+        modalNoPO.value=row.querySelector('.noPO').textContent;
+        modalBuyer.value=row.querySelector('.buyer').textContent;
+        modalStyle.value=row.querySelector('.style').textContent;
+        modalNamaBarang.value=row.querySelector('.namaBarang').textContent;
+        modalQty.value=row.querySelector('.qty').textContent;
+        modalCons.value=row.querySelector('.consumption').textContent;
+        modalKebOrder.value=row.querySelector('.kebOrder').textContent;
+        modalKebMarker.value=row.querySelector('.kebMarker').textContent;
+        modalBLCOrder.value=row.querySelector('.blcOrder').textContent;
+        modalBLCMarker.value=row.querySelector('.blcMarker').textContent;
+        modalKeterangan.value=row.querySelector('.keterangan').textContent;
+        modalStatus.value=row.querySelector('.status').textContent;
+        loadingHistory=JSON.parse(row.querySelector('.loadingHistory').textContent||'[]');
+        renderLoadingList();
+        updateBLCs();
+    } else editRow=null;
+}
+function closeModal(){ modal.style.display='none'; }
+
+function renderLoadingList(){
+    loadingList.innerHTML='';
+    loadingHistory.forEach((l,i)=>{
+        const div=document.createElement('div');
+        div.innerHTML=`<span>${l.date}</span><span>${l.qty}</span><button onclick="removeLoading(${i})">x</button>`;
+        loadingList.appendChild(div);
+    });
+    updateBLCs();
+}
+function removeLoading(i){ loadingHistory.splice(i,1); renderLoadingList(); }
+addLoadingBtn.onclick=()=>{ const d=modalLoadingDate.value; const q=parseFloat(modalLoadingQty.value)||0;
+    if(d&&q>0){ loadingHistory.push({date:d,qty:q}); renderLoadingList(); modalLoadingDate.value=''; modalLoadingQty.value=''; }
+};
+
+function createRow(data){
+    const tr=document.createElement('tr');
+    const totalLoading=data.loadingHistory.reduce((s,l)=>s+parseFloat(l.qty),0);
+    tr.innerHTML=`
+    <td class="noPO">${data.noPO}</td><td class="buyer">${data.buyer}</td><td class="style">${data.style}</td>
+    <td class="namaBarang">${data.namaBarang}</td><td class="qty">${data.qty}</td><td class="consumption">${data.consumption}</td>
+    <td class="kebOrder">${data.kebOrder}</td><td class="kebMarker">${data.kebMarker}</td>
+    <td class="blcOrder">${data.blcOrder}</td><td class="blcMarker">${data.blcMarker}</td>
+    <td class="totalLoadingQty">${totalLoading}</td><td class="status">${data.status}</td>
+    <td class="keterangan">${data.keterangan}</td><td class="loadingHistory" style="display:none;">${JSON.stringify(data.loadingHistory)}</td>`;
+    tr.querySelectorAll('td').forEach(td=>td.addEventListener('click',()=>showModal(tr)));
+    if(data.status==="Finished") finishedTbody.appendChild(tr); else tbody.appendChild(tr);
+    highlightNegativeNumbers(tr);
+    highlightStatus(tr);
+}
+
+// 🔴 Warna merah untuk angka negatif
+function highlightNegativeNumbers(element){
+    element.querySelectorAll('td').forEach(td=>{
+        let val=parseFloat(td.textContent.replace(/,/g,''));
+        if(!isNaN(val) && val<0){
+            td.classList.add('negative');
+        }
+    });
+}
+
+// 🟢 Warna status
+function highlightStatus(row){
+    const statusCell=row.querySelector('.status');
+    if(!statusCell) return;
+    const s=statusCell.textContent.trim().toLowerCase();
+    statusCell.classList.remove('status-draft','status-onprocess','status-finished');
+    if(s==='draft') statusCell.classList.add('status-draft');
+    else if(s==='on process') statusCell.classList.add('status-onprocess');
+    else if(s==='finished') statusCell.classList.add('status-finished');
+}
+
+// Tombol tambah hanya aktif di halaman On Process
+addRowBtn.onclick=()=>{ 
+    editRow=null;
+    modalNoPO.value=''; modalBuyer.value=''; modalStyle.value=''; modalNamaBarang.value='';
+    modalQty.value=''; modalCons.value=''; modalKebOrder.value=''; modalKebMarker.value='';
+    modalBLCOrder.value=''; modalBLCMarker.value=''; modalKeterangan.value=''; modalStatus.value='Draft';
+    loadingHistory=[]; renderLoadingList(); showModal();
+};
+
+saveBtn.onclick=()=>{ 
+    const qty=parseFloat(modalQty.value)||0; const cons=parseFloat(modalCons.value)||0;
+    const kebOrder=qty*cons; const kebMarker=parseFloat(modalKebMarker.value)||0;
+    const totalLoading=loadingHistory.reduce((s,l)=>s+l.qty,0);
+    const blcOrder=totalLoading-kebOrder; const blcMarker=totalLoading-kebMarker;
+    const data={ noPO:modalNoPO.value, buyer:modalBuyer.value, style:modalStyle.value, namaBarang:modalNamaBarang.value,
+        qty:qty, consumption:cons, kebOrder:kebOrder.toFixed(2), kebMarker:kebMarker.toFixed(2),
+        blcOrder:blcOrder.toFixed(2), blcMarker:blcMarker.toFixed(2), loadingHistory:loadingHistory,
+        status:modalStatus.value, keterangan:modalKeterangan.value };
+    if(editRow){ editRow.remove(); }
+    createRow(data); saveToLocalStorage(); closeModal();
+};
+
+deleteBtn.onclick=()=>{ if(editRow&&confirm('Hapus baris ini?')){ editRow.remove(); saveToLocalStorage(); closeModal(); } };
+cancelBtn.onclick=()=>closeModal();
+window.onclick=e=>{ if(e.target==modal) closeModal(); };
+
+function saveToLocalStorage(){
+    let all=[]; [...tbody.children,...finishedTbody.children].forEach(tr=>{
+        all.push({ noPO:tr.querySelector('.noPO').textContent, buyer:tr.querySelector('.buyer').textContent,
+            style:tr.querySelector('.style').textContent, namaBarang:tr.querySelector('.namaBarang').textContent,
+            qty:tr.querySelector('.qty').textContent, consumption:tr.querySelector('.consumption').textContent,
+            kebOrder:tr.querySelector('.kebOrder').textContent, kebMarker:tr.querySelector('.kebMarker').textContent,
+            blcOrder:tr.querySelector('.blcOrder').textContent, blcMarker:tr.querySelector('.blcMarker').textContent,
+            loadingHistory:tr.querySelector('.loadingHistory').textContent, status:tr.querySelector('.status').textContent,
+            keterangan:tr.querySelector('.keterangan').textContent });
+    });
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(all));
+}
+function loadFromLocalStorage(){
+    const data=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+    tbody.innerHTML=''; finishedTbody.innerHTML='';
+    data.forEach(d=>{
+        createRow({...d,loadingHistory:JSON.parse(d.loadingHistory)});
+    });
+}
+
+linkMain.onclick=()=>{ 
+    pageMain.style.display='block'; 
+    pageFinished.style.display='none'; 
+    addRowBtn.style.display='inline-block'; 
+};
+linkFinished.onclick=()=>{ 
+    pageMain.style.display='none'; 
+    pageFinished.style.display='block'; 
+    addRowBtn.style.display='none'; 
+};
+
+loadFromLocalStorage();
+</script>
+
+</body>
+</html>
