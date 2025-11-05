@@ -46,6 +46,9 @@ button.nav { background:#2196F3; color:white; }
     .nav-row { flex-direction: column; align-items: flex-start; gap:5px; }
 }
 </style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
 
@@ -138,11 +141,18 @@ button.nav { background:#2196F3; color:white; }
     </div>
 </div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyACOluEhfPw4JBlBaHyXtf1k3TIJAHikKo",
+  authDomain: "inventory-gudang-16dfe.firebaseapp.com",
+  projectId: "inventory-gudang-16dfe",
+  storageBucket: "inventory-gudang-16dfe.appspot.com",
+  messagingSenderId: "663364522026",
+  appId: "1:663364522026:web:6ee9d76e506d6cf43eb289"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 const STORAGE_KEY='alokasiKainData';
 const tbody=document.querySelector('#kainTable tbody');
 const finishedTbody=document.querySelector('#finishedTable tbody');
@@ -159,7 +169,7 @@ const pageFinished=document.getElementById('pageFinished');
 let editRow=null;
 let loadingHistory=[];
 
-// Modal inputs
+// modal inputs
 const modalNoPO=document.getElementById('modalNoPO');
 const modalBuyer=document.getElementById('modalBuyer');
 const modalStyle=document.getElementById('modalStyle');
@@ -177,20 +187,7 @@ const loadingList=document.getElementById('loadingList');
 const modalKeterangan=document.getElementById('modalKeterangan');
 const modalStatus=document.getElementById('modalStatus');
 
-// ===== Firestore Init =====
-const firebaseConfig = {
-  apiKey: "AIzaSyACOluEhfPw4JBlBaHyXtf1k3TIJAHikKo",
-  authDomain: "inventory-gudang-16dfe.firebaseapp.com",
-  projectId: "inventory-gudang-16dfe",
-  storageBucket: "inventory-gudang-16dfe.appspot.com",
-  messagingSenderId: "663364522026",
-  appId: "1:663364522026:web:6ee9d76e506d6cf43eb289"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const alokasiKainCol = db.collection("alokasiKain");
-
-// ===== Perhitungan =====
+// ===== Fungsi hitung
 function updateKebOrder(){
     let qty=parseFloat(modalQty.value)||0;
     let cons=parseFloat(modalCons.value)||0;
@@ -205,7 +202,7 @@ function updateBLCs(){
     modalBLCMarker.value=(totalLoading-kebMarker).toFixed(2);
 }
 
-// ===== Modal =====
+// ===== Modal
 function showModal(row=null){
     modal.style.display='block';
     loadingHistory=[]; loadingList.innerHTML='';
@@ -230,6 +227,15 @@ function showModal(row=null){
 }
 function closeModal(){ modal.style.display='none'; }
 
+addLoadingBtn.onclick=()=>{
+    const d=modalLoadingDate.value; 
+    const q=parseFloat(modalLoadingQty.value)||0;
+    if(d && q>0){
+        loadingHistory.push({date:d, qty:q});
+        renderLoadingList();
+        modalLoadingDate.value=''; modalLoadingQty.value='';
+    }
+};
 function renderLoadingList(){
     loadingList.innerHTML='';
     loadingHistory.forEach((l,i)=>{
@@ -240,14 +246,10 @@ function renderLoadingList(){
     updateBLCs();
 }
 function removeLoading(i){ loadingHistory.splice(i,1); renderLoadingList(); }
-addLoadingBtn.onclick=()=>{ const d=modalLoadingDate.value; const q=parseFloat(modalLoadingQty.value)||0;
-    if(d&&q>0){ loadingHistory.push({date:d,qty:q}); renderLoadingList(); modalLoadingDate.value=''; modalLoadingQty.value=''; }
-};
 
-// ===== Buat Row =====
+// ===== Create Row
 function createRow(data){
     const tr=document.createElement('tr');
-    tr.dataset.id = data.id || '';
     const totalLoading=data.loadingHistory.reduce((s,l)=>s+parseFloat(l.qty),0);
     tr.innerHTML=`
     <td class="noPO">${data.noPO}</td><td class="buyer">${data.buyer}</td><td class="style">${data.style}</td>
@@ -262,13 +264,11 @@ function createRow(data){
     highlightStatus(tr);
 }
 
-// ===== Highlight =====
+// ===== Highlight
 function highlightNegativeNumbers(element){
     element.querySelectorAll('td').forEach(td=>{
-        let val=parseFloat(td.textContent.replace(/,/g,''));
-        if(!isNaN(val) && val<0){
-            td.classList.add('negative');
-        }
+        let val=parseFloat(td.textContent.replace(/,/g,'')); 
+        if(!isNaN(val) && val<0) td.classList.add('negative');
     });
 }
 function highlightStatus(row){
@@ -281,7 +281,7 @@ function highlightStatus(row){
     else if(s==='finished') statusCell.classList.add('status-finished');
 }
 
-// ===== Tombol Add =====
+// ===== Add / Edit / Delete
 addRowBtn.onclick=()=>{ 
     editRow=null;
     modalNoPO.value=''; modalBuyer.value=''; modalStyle.value=''; modalNamaBarang.value='';
@@ -290,98 +290,86 @@ addRowBtn.onclick=()=>{
     loadingHistory=[]; renderLoadingList(); showModal();
 };
 
-// ===== Save =====
-saveBtn.onclick=async()=>{ 
-    const qty=parseFloat(modalQty.value)||0; const cons=parseFloat(modalCons.value)||0;
-    const kebOrder=qty*cons; const kebMarker=parseFloat(modalKebMarker.value)||0;
+saveBtn.onclick=async ()=>{
+    const qty=parseFloat(modalQty.value)||0;
+    const cons=parseFloat(modalCons.value)||0;
+    const kebOrder=(qty*cons).toFixed(2);
+    const kebMarker=parseFloat(modalKebMarker.value)||0;
     const totalLoading=loadingHistory.reduce((s,l)=>s+l.qty,0);
-    const blcOrder=totalLoading-kebOrder; const blcMarker=totalLoading-kebMarker;
-    let data={ noPO:modalNoPO.value, buyer:modalBuyer.value, style:modalStyle.value, namaBarang:modalNamaBarang.value,
-        qty:qty, consumption:cons, kebOrder:kebOrder.toFixed(2), kebMarker:kebMarker.toFixed(2),
-        blcOrder:blcOrder.toFixed(2), blcMarker:blcMarker.toFixed(2), loadingHistory:loadingHistory,
-        status:modalStatus.value, keterangan:modalKeterangan.value };
-    
-    try {
-        if(editRow && editRow.dataset.id){
-            await alokasiKainCol.doc(editRow.dataset.id).update(data);
-            data.id = editRow.dataset.id;
-            editRow.remove();
-        } else {
-            const docRef = await alokasiKainCol.add(data);
-            data.id = docRef.id;
-        }
-    } catch(e){ console.warn("Firestore error:", e); }
+    const blcOrder=(totalLoading-kebOrder).toFixed(2);
+    const blcMarker=(totalLoading-kebMarker).toFixed(2);
 
+    const data={
+        noPO:modalNoPO.value, buyer:modalBuyer.value, style:modalStyle.value, namaBarang:modalNamaBarang.value,
+        qty:qty, consumption:cons, kebOrder:kebOrder, kebMarker:kebMarker.toFixed(2),
+        blcOrder:blcOrder, blcMarker:blcMarker, loadingHistory:loadingHistory,
+        status:modalStatus.value, keterangan:modalKeterangan.value
+    };
+
+    try {
+        // Firestore
+        await db.collection('alokasiKain').add(data);
+        showNotification("Data tersimpan di Firestore!");
+    } catch(e){
+        console.warn("Firestore gagal:", e);
+        showNotification("Gagal simpan ke Firestore, disimpan di localStorage");
+    }
+
+    if(editRow) editRow.remove();
     createRow(data);
     saveToLocalStorage(data);
     closeModal();
 };
 
-// ===== Delete =====
-deleteBtn.onclick=async()=>{
-    if(editRow && confirm('Hapus baris ini?')){
-        const id = editRow.dataset.id;
-        if(id){
-            try{ await alokasiKainCol.doc(id).delete(); } catch(e){ console.warn("Firestore delete error:", e); }
-        }
-        removeFromLocalStorage(id);
+deleteBtn.onclick=()=>{
+    if(editRow && confirm("Hapus baris ini?")){
         editRow.remove();
         closeModal();
     }
 };
-
 cancelBtn.onclick=()=>closeModal();
 window.onclick=e=>{ if(e.target==modal) closeModal(); };
 
-// ===== LocalStorage =====
-function saveToLocalStorage(newData){
-    let all = JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
-    if(editRow && editRow.dataset.id){
-        all = all.map(d => d.id===editRow.dataset.id ? newData : d);
-    } else {
-        all.push(newData);
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-}
-function removeFromLocalStorage(id){
-    if(!id) return;
-    let all = JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
-    all = all.filter(d=>d.id!==id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-}
-async function loadData(){
-    try {
-        const snapshot = await alokasiKainCol.get();
-        tbody.innerHTML=''; finishedTbody.innerHTML='';
-        snapshot.forEach(docSnap=>{
-            const data = docSnap.data(); data.id = docSnap.id;
-            createRow(data);
+// ===== NAVIGASI =====
+linkMain.onclick=()=>{ pageMain.style.display='block'; pageFinished.style.display='none'; addRowBtn.style.display='inline-block'; }
+linkFinished.onclick=()=>{ pageMain.style.display='none'; pageFinished.style.display='block'; addRowBtn.style.display='none'; }
+
+// ===== LOCAL STORAGE =====
+function saveToLocalStorage(){
+    let all=[]; [...tbody.children,...finishedTbody.children].forEach(tr=>{
+        all.push({
+            noPO:tr.querySelector('.noPO').textContent,
+            buyer:tr.querySelector('.buyer').textContent,
+            style:tr.querySelector('.style').textContent,
+            namaBarang:tr.querySelector('.namaBarang').textContent,
+            qty:tr.querySelector('.qty').textContent,
+            consumption:tr.querySelector('.consumption').textContent,
+            kebOrder:tr.querySelector('.kebOrder').textContent,
+            kebMarker:tr.querySelector('.kebMarker').textContent,
+            blcOrder:tr.querySelector('.blcOrder').textContent,
+            blcMarker:tr.querySelector('.blcMarker').textContent,
+            loadingHistory:tr.querySelector('.loadingHistory').textContent,
+            status:tr.querySelector('.status').textContent,
+            keterangan:tr.querySelector('.keterangan').textContent
         });
-    } catch(e){
-        console.warn("Load Firestore error, fallback to localStorage:", e);
-        loadFromLocalStorage();
-    }
+    });
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(all));
 }
+
 function loadFromLocalStorage(){
     const data=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
     tbody.innerHTML=''; finishedTbody.innerHTML='';
-    data.forEach(d=>createRow(d));
+    data.forEach(d=>{
+        createRow({...d,loadingHistory:JSON.parse(d.loadingHistory)});
+    });
 }
 
-// ===== Navigation =====
-linkMain.onclick=()=>{ 
-    pageMain.style.display='block'; 
-    pageFinished.style.display='none'; 
-    addRowBtn.style.display='inline-block'; 
-};
-linkFinished.onclick=()=>{ 
-    pageMain.style.display='none'; 
-    pageFinished.style.display='block'; 
-    addRowBtn.style.display='none'; 
-};
+function showNotification(msg){
+    alert(msg);
+}
 
-// ===== Init =====
-loadData();
+// ===== Load =====
+loadFromLocalStorage();
 </script>
 </body>
 </html>
