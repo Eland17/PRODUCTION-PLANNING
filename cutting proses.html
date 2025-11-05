@@ -16,11 +16,9 @@ button { padding:6px 12px; margin:5px 2px; border:none; border-radius:4px; curso
 button.edit { background:#4CAF50; color:white; }
 button.del { background:#f44336; color:white; }
 button.nav { background:#2196F3; color:white; }
-
 .nav-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 .nav-left { display:flex; gap:5px; }
-.nav-right {}
-
+.nav-right{}
 .modal { display:none; position:fixed; z-index:10; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.4); }
 .modal-content { background:#fff; margin:6% auto; padding:20px 25px; border-radius:8px; width:750px; box-shadow:0 5px 20px rgba(0,0,0,0.3); }
 .modal-form { display:grid; grid-template-columns:1fr 1fr; gap:10px 15px; align-items:center; }
@@ -40,20 +38,7 @@ button.nav { background:#2196F3; color:white; }
 .loading-list div { font-size:13px; margin-bottom:2px; display:flex; justify-content:space-between; }
 .loading-list div span { margin-right:10px; }
 .loading-list div button { background:#f44336; color:white; border:none; padding:2px 6px; border-radius:4px; cursor:pointer; font-size:12px; }
-
-.toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333; color:white;
-    padding: 10px 20px;
-    border-radius: 5px;
-    opacity:0;
-    transition: opacity 0.5s;
-    z-index: 100;
-}
-
+.toast { position:fixed; top:20px; right:20px; background:#333; color:white; padding:10px 15px; border-radius:5px; opacity:0; transition:0.3s; z-index:999; }
 @media(max-width:600px){ 
     .modal-content{width:95%;} 
     .modal-form{grid-template-columns:1fr;} 
@@ -152,12 +137,12 @@ button.nav { background:#2196F3; color:white; }
     </div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div class="toast" id="toast"></div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script>
-// ===== Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyACOluEhfPw4JBlBaHyXtf1k3TIJAHikKo",
   authDomain: "inventory-gudang-16dfe.firebaseapp.com",
@@ -169,7 +154,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// ===== DOM
+// ===== Variabel global
 const tbody=document.querySelector('#kainTable tbody');
 const finishedTbody=document.querySelector('#finishedTable tbody');
 const modal=document.getElementById('formModal');
@@ -184,9 +169,10 @@ const pageFinished=document.getElementById('pageFinished');
 const toast=document.getElementById('toast');
 
 let editRow=null;
-let editDocId=null; // Firestore doc ID
+let editDocId=null;
 let loadingHistory=[];
 
+// Modal input
 const modalNoPO=document.getElementById('modalNoPO');
 const modalBuyer=document.getElementById('modalBuyer');
 const modalStyle=document.getElementById('modalStyle');
@@ -204,14 +190,14 @@ const loadingList=document.getElementById('loadingList');
 const modalKeterangan=document.getElementById('modalKeterangan');
 const modalStatus=document.getElementById('modalStatus');
 
-// ===== Toast
+// ===== Fungsi toast
 function showToast(msg){
     toast.textContent=msg;
     toast.style.opacity=1;
     setTimeout(()=>{ toast.style.opacity=0; },2500);
 }
 
-// ===== Kalkulasi
+// ===== Perhitungan
 function updateKebOrder(){
     let qty=parseFloat(modalQty.value)||0;
     let cons=parseFloat(modalCons.value)||0;
@@ -230,9 +216,10 @@ function updateBLCs(){
 function showModal(row=null, docId=null){
     modal.style.display='block';
     loadingHistory=[]; loadingList.innerHTML='';
-    editRow=row;
-    editDocId=docId||null;
+    editDocId=null;
     if(row){
+        editRow=row;
+        editDocId=docId;
         modalNoPO.value=row.querySelector('.noPO').textContent;
         modalBuyer.value=row.querySelector('.buyer').textContent;
         modalStyle.value=row.querySelector('.style').textContent;
@@ -248,14 +235,12 @@ function showModal(row=null, docId=null){
         loadingHistory=JSON.parse(row.querySelector('.loadingHistory').textContent||'[]');
         renderLoadingList();
         updateBLCs();
-    } else {
-        modalNoPO.value=''; modalBuyer.value=''; modalStyle.value=''; modalNamaBarang.value='';
-        modalQty.value=''; modalCons.value=''; modalKebOrder.value=''; modalKebMarker.value='';
-        modalBLCOrder.value=''; modalBLCMarker.value=''; modalKeterangan.value=''; modalStatus.value='Draft';
-        loadingHistory=[]; renderLoadingList();
-    }
+    } else editRow=null;
 }
 function closeModal(){ modal.style.display='none'; }
+window.onclick=e=>{ if(e.target==modal) closeModal(); }
+
+// ===== Loading
 function renderLoadingList(){
     loadingList.innerHTML='';
     loadingHistory.forEach((l,i)=>{
@@ -266,168 +251,123 @@ function renderLoadingList(){
     updateBLCs();
 }
 function removeLoading(i){ loadingHistory.splice(i,1); renderLoadingList(); }
-addLoadingBtn.onclick=()=>{
-    const d=modalLoadingDate.value;
+addLoadingBtn.onclick=()=>{ 
+    const d=modalLoadingDate.value; 
     const q=parseFloat(modalLoadingQty.value)||0;
     if(d&&q>0){ loadingHistory.push({date:d,qty:q}); renderLoadingList(); modalLoadingDate.value=''; modalLoadingQty.value=''; }
 };
 
-// ===== Buat Row
+// ===== Create Row
 function createRow(data, docId=null){
     const tr=document.createElement('tr');
-    tr.setAttribute('data-docid', docId||'');
     const totalLoading=data.loadingHistory.reduce((s,l)=>s+parseFloat(l.qty),0);
     tr.innerHTML=`
-        <td class="noPO">${data.noPO}</td>
-        <td class="buyer">${data.buyer}</td>
-        <td class="style">${data.style}</td>
-        <td class="namaBarang">${data.namaBarang}</td>
-        <td class="qty">${data.qty}</td>
-        <td class="consumption">${data.consumption}</td>
-        <td class="kebOrder">${data.kebOrder}</td>
-        <td class="kebMarker">${data.kebMarker}</td>
-        <td class="blcOrder">${data.blcOrder}</td>
-        <td class="blcMarker">${data.blcMarker}</td>
-        <td class="totalLoadingQty">${totalLoading}</td>
-        <td class="status">${data.status}</td>
-        <td class="keterangan">${data.keterangan}</td>
-        <td class="loadingHistory" style="display:none;">${JSON.stringify(data.loadingHistory)}</td>
-    `;
-    tr.querySelectorAll('td').forEach(td=>td.addEventListener('click',()=>showModal(tr, docId)));
-    if(data.status==="Finished") finishedTbody.appendChild(tr);
-    else tbody.appendChild(tr);
+    <td class="noPO">${data.noPO}</td><td class="buyer">${data.buyer}</td><td class="style">${data.style}</td>
+    <td class="namaBarang">${data.namaBarang}</td><td class="qty">${data.qty}</td><td class="consumption">${data.consumption}</td>
+    <td class="kebOrder">${data.kebOrder}</td><td class="kebMarker">${data.kebMarker}</td>
+    <td class="blcOrder">${data.blcOrder}</td><td class="blcMarker">${data.blcMarker}</td>
+    <td class="totalLoadingQty">${totalLoading}</td><td class="status">${data.status}</td>
+    <td class="keterangan">${data.keterangan}</td>
+    <td class="loadingHistory" style="display:none;">${JSON.stringify(data.loadingHistory)}</td>
+    <td class="docId" style="display:none;">${docId||''}</td>`;
+    
+    tr.querySelectorAll('td').forEach(td=>{
+        td.addEventListener('click',()=>showModal(tr, docId));
+    });
     highlightNegativeNumbers(tr);
     highlightStatus(tr);
+    if(data.status==="Finished") finishedTbody.appendChild(tr); else tbody.appendChild(tr);
 }
 
 // ===== Highlight
 function highlightNegativeNumbers(element){
     element.querySelectorAll('td').forEach(td=>{
-        let val=parseFloat(td.textContent.replace(/,/g,''));
-        if(!isNaN(val) && val<0) td.classList.add('negative');
+        let val=parseFloat(td.textContent.replace(/,/g,''))||0;
+        if(val<0) td.classList.add('negative');
     });
 }
 function highlightStatus(row){
     const statusCell=row.querySelector('.status');
     if(!statusCell) return;
-    const s=statusCell.textContent.trim().toLowerCase();
     statusCell.classList.remove('status-draft','status-onprocess','status-finished');
+    const s=statusCell.textContent.trim().toLowerCase();
     if(s==='draft') statusCell.classList.add('status-draft');
     else if(s==='on process') statusCell.classList.add('status-onprocess');
     else if(s==='finished') statusCell.classList.add('status-finished');
 }
 
-// ===== Tambah/Edit/Delete
-addRowBtn.onclick=()=> showModal();
+// ===== Tombol tambah
+addRowBtn.onclick=()=>{ 
+    editRow=null; editDocId=null;
+    modalNoPO.value=''; modalBuyer.value=''; modalStyle.value=''; modalNamaBarang.value='';
+    modalQty.value=''; modalCons.value=''; modalKebOrder.value=''; modalKebMarker.value='';
+    modalBLCOrder.value=''; modalBLCMarker.value=''; modalKeterangan.value=''; modalStatus.value='Draft';
+    loadingHistory=[]; renderLoadingList(); showModal();
+};
 
+// ===== Simpan
 saveBtn.onclick=()=>{
+    const qty=parseFloat(modalQty.value)||0; 
+    const cons=parseFloat(modalCons.value)||0;
+    const kebOrder=(qty*cons).toFixed(2); 
+    const kebMarker=(parseFloat(modalKebMarker.value)||0).toFixed(2);
+    const totalLoading=loadingHistory.reduce((s,l)=>s+l.qty,0);
+    const blcOrder=(totalLoading-kebOrder).toFixed(2); 
+    const blcMarker=(totalLoading-kebMarker).toFixed(2);
     const data={
-        noPO:modalNoPO.value,
-        buyer:modalBuyer.value,
-        style:modalStyle.value,
-        namaBarang:modalNamaBarang.value,
-        qty:modalQty.value,
-        consumption:modalCons.value,
-        kebOrder:modalKebOrder.value,
-        kebMarker:modalKebMarker.value,
-        blcOrder:modalBLCOrder.value,
-        blcMarker:modalBLCMarker.value,
-        status:modalStatus.value,
-        keterangan:modalKeterangan.value,
-        loadingHistory:loadingHistory
+        noPO:modalNoPO.value, buyer:modalBuyer.value, style:modalStyle.value, namaBarang:modalNamaBarang.value,
+        qty, consumption:cons, kebOrder, kebMarker, blcOrder, blcMarker,
+        loadingHistory, status:modalStatus.value, keterangan:modalKeterangan.value
     };
 
-    if(editRow && editDocId){ // Update Firestore
+    if(editDocId){ // update Firestore
         db.collection('alokasiKain').doc(editDocId).set(data)
         .then(()=>{
             editRow.remove();
             createRow(data, editDocId);
-            saveToLocalStorage();
-            showToast('Data diperbarui di Firestore');
+            showToast('Data berhasil diperbarui di Firestore');
             closeModal();
-        }).catch(err=>showToast('Gagal update: '+err));
-    } else { // Tambah baru
+        }).catch(e=>showToast('Gagal update: '+e));
+    } else { // new
         db.collection('alokasiKain').add(data)
         .then(docRef=>{
             createRow(data, docRef.id);
-            saveToLocalStorage();
-            showToast('Data tersimpan di Firestore');
+            showToast('Data berhasil disimpan di Firestore');
             closeModal();
-        }).catch(err=>showToast('Gagal menyimpan: '+err));
+        }).catch(e=>showToast('Gagal simpan: '+e));
     }
 };
 
+// ===== Hapus
 deleteBtn.onclick=()=>{
     if(!editRow) return;
     if(editDocId){
         db.collection('alokasiKain').doc(editDocId).delete()
         .then(()=>{ 
             editRow.remove(); 
-            saveToLocalStorage();
             showToast('Data dihapus dari Firestore'); 
             closeModal();
         }).catch(err=>showToast('Gagal hapus: '+err));
-    } else { // Hanya local
+    } else {
         editRow.remove();
-        saveToLocalStorage();
         showToast('Data dihapus');
         closeModal();
     }
 };
+cancelBtn.onclick=()=>closeModal();
 
-cancelBtn.onclick=()=> closeModal();
+// ===== Navigasi halaman
+linkMain.onclick=()=>{ pageMain.style.display='block'; pageFinished.style.display='none'; };
+linkFinished.onclick=()=>{ pageMain.style.display='none'; pageFinished.style.display='block'; };
 
-// ===== LocalStorage
-function saveToLocalStorage(){
-    let all=[]; [...tbody.children,...finishedTbody.children].forEach(tr=>{
-        all.push({
-            noPO:tr.querySelector('.noPO').textContent,
-            buyer:tr.querySelector('.buyer').textContent,
-            style:tr.querySelector('.style').textContent,
-            namaBarang:tr.querySelector('.namaBarang').textContent,
-            qty:tr.querySelector('.qty').textContent,
-            consumption:tr.querySelector('.consumption').textContent,
-            kebOrder:tr.querySelector('.kebOrder').textContent,
-            kebMarker:tr.querySelector('.kebMarker').textContent,
-            blcOrder:tr.querySelector('.blcOrder').textContent,
-            blcMarker:tr.querySelector('.blcMarker').textContent,
-            loadingHistory:tr.querySelector('.loadingHistory').textContent,
-            status:tr.querySelector('.status').textContent,
-            keterangan:tr.querySelector('.keterangan').textContent
-        });
-    });
-    localStorage.setItem('alokasiKainData',JSON.stringify(all));
-}
-function loadFromLocalStorage(){
-    const data=JSON.parse(localStorage.getItem('alokasiKainData')||'[]');
-    tbody.innerHTML=''; finishedTbody.innerHTML='';
-    data.forEach(d=> createRow({...d, loadingHistory: JSON.parse(d.loadingHistory)}));
-}
-
-// ===== Firestore
-function loadFromFirestore(){
-    db.collection('alokasiKain').get().then(snapshot=>{
-        snapshot.forEach(doc=>{
-            const d = doc.data();
-            createRow(d, doc.id);
-        });
-    });
-}
-
-// ===== Navigation
-linkMain.onclick=()=>{ pageMain.style.display='block'; pageFinished.style.display='none'; addRowBtn.style.display='inline-block'; localStorage.setItem('lastPage','main'); };
-linkFinished.onclick=()=>{ pageMain.style.display='none'; pageFinished.style.display='block'; addRowBtn.style.display='none'; localStorage.setItem('lastPage','finished'); };
-
-// ===== Load
-loadFromLocalStorage();
-loadFromFirestore();
-
-// ===== Page terakhir setelah refresh
+// ===== Load data Firestore
 window.onload=()=>{
-    const last=localStorage.getItem('lastPage')||'main';
-    if(last==='finished') linkFinished.click(); else linkMain.click();
+    db.collection('alokasiKain').get().then(snap=>{
+        snap.forEach(doc=>{
+            createRow(doc.data(), doc.id);
+        });
+    });
 };
 </script>
-
 </body>
 </html>
